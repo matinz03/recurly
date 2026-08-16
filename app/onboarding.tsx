@@ -4,8 +4,7 @@ import React from 'react'
 const OnBoarding = () => {
   return (
     <View>
-      <Text>OnBoarding
-        g</Text>
+      <Text>Onboarding</Text>
     </View>
   )
 }
