@@ -33,7 +33,7 @@ const SignIn = () => {
 
     // Client-side validation
     const emailValid = emailAddress.length === 0 || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailAddress);
-    const passwordValid = password.length === 0 || password.length > 0;
+    const passwordValid = password.length > 0;
     const formValid = emailAddress.length > 0 && password.length > 0 && emailValid;
 
     const handleSubmit = async () => {
