@@ -49,6 +49,7 @@ declare global {
 
     interface ListHeadingProps {
         title: string;
+        onPress?: () => void;
     }
 }
 
