@@ -4,6 +4,7 @@ import { useSignIn, useSSO } from '@clerk/expo';
 import { useState } from 'react';
 import { SafeAreaView as RNSafeAreaView } from 'react-native-safe-area-context';
 import { styled } from 'nativewind';
+import * as Linking from 'expo-linking';
 import { AntDesign } from '@expo/vector-icons';
 import { colors } from '@/constants/theme';
 import clsx from 'clsx';
@@ -61,7 +62,8 @@ const SignIn = () => {
 
                     const url = decorateUrl('/(tabs)');
                     if (url.startsWith('http')) {
-                        window.location.href = url;
+                        // React Native has no window.location - assigning to it throws.
+                        Linking.openURL(url).catch(() => {});
                     } else {
                         router.replace(url as Href);
                     }
@@ -142,7 +144,8 @@ const SignIn = () => {
 
                     const url = decorateUrl('/(tabs)');
                     if (url.startsWith('http')) {
-                        window.location.href = url;
+                        // React Native has no window.location - assigning to it throws.
+                        Linking.openURL(url).catch(() => {});
                     } else {
                         router.replace(url as Href);
                     }
