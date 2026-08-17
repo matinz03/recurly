@@ -733,4 +733,36 @@
     .auth-warning {
         @apply text-xs font-sans-medium text-accent;
     }
+
+    .settings-row {
+        @apply flex-row items-center justify-between gap-3 py-2;
+    }
+
+    .settings-row-copy {
+        @apply flex-1 gap-1 pr-3;
+    }
+
+    .settings-row-label {
+        @apply text-sm font-sans-semibold text-primary;
+    }
+
+    .settings-row-helper {
+        @apply text-xs font-sans-medium text-muted-foreground;
+    }
+
+    .settings-divider {
+        @apply my-3 h-px bg-border;
+    }
+
+    /* Outlined rather than filled, same reasoning .sub-delete gives for its
+       destructive-but-secondary styling - this sits in the same card as
+       ordinary rows and shouldn't read as more urgent than a modal
+       confirmation would already make it. */
+    .settings-danger-button {
+        @apply mt-1 items-center rounded-2xl border border-destructive/40 bg-destructive/10 py-4;
+    }
+
+    .settings-danger-button-text {
+        @apply text-base font-sans-bold text-destructive;
+    }
 }

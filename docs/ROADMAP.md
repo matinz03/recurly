@@ -76,8 +76,20 @@ Prioritised by "how badly does its absence hurt a real user", not by effort.
       `ActivityIndicator`). No in-app toggle - see docs/DECISIONS.md for the
       palette rationale, the two bundled-PNG-icon constraints it works
       around, and why category colours and the tab bar stay fixed.
-- [ ] **Settings screen is account-only.** No reminder lead-time control, no
-      display-currency preference, no way to clear stored data.
+- [x] **Settings screen is account-only.** Added `lib/preferencesStore.ts`
+      (zustand + `persist`, mirroring `lib/subscriptionStore.ts`'s shape) for
+      a reminders on/off switch and a 1/2/3/7-day lead-time picker;
+      `lib/notifications.ts` reads both from the store instead of its old
+      module constant, and `lib/useRenewalReminders.ts` also subscribes to
+      the preferences store so a change takes effect immediately rather than
+      waiting for the next subscription edit. "Clear stored data" resets
+      subscriptions via `useSubscriptionStore.persist.clearStorage()` plus
+      `setState({ subscriptions: [] })` (subscriptionStore.ts stayed
+      untouched) and preferences via a `resetPreferences` action, behind an
+      `Alert` confirmation. No display-currency preference yet - the app
+      still never sums across currencies (see "Never sum across
+      currencies" above), so there's nothing for a single preferred
+      currency to control without reintroducing FX conversion.
 
 ## Known cosmetic debt
 
