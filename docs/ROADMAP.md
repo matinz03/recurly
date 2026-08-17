@@ -2,36 +2,51 @@
 
 Prioritised by "how badly does its absence hurt a real user", not by effort.
 
-## P0 — the app is misleading without these
+## Shipped
 
-- [ ] **Persist the store.** Everything created, edited, or cancelled is lost on
-      app restart; the seed list comes back. This is the single biggest gap — a
-      tracker that forgets what you tracked. `zustand/middleware` `persist` +
-      `@react-native-async-storage/async-storage`, with a schema version so
-      future shape changes can migrate rather than corrupt.
-- [ ] **Mixed currencies are summed as one number.** `monthlyPrice` adds raw
-      prices and `formatCurrency` labels the total USD. Two subscriptions in
-      different currencies produce a confidently wrong total. Either constrain
-      input to a single display currency, or convert before summing.
-- [ ] **Unit tests.** `nextRenewalDate`, `daysUntil`, `monthlyPrice`,
-      `matchSubscriptionIcon`, and the price validation are pure and
-      high-traffic, and several have already regressed once. `jest-expo`.
+- [x] **Persist the store.** `zustand/middleware` `persist` over AsyncStorage,
+      with a version and migrate seam. Icons are stored as a discriminator
+      (`IconKey` or SVG markup) because a bundled PNG is a Metro asset
+      reference that isn't stable across builds — see `docs/DECISIONS.md`.
+- [x] **Never sum across currencies.** `totalsByCurrency()` groups by currency;
+      Home features the largest and lists the rest, Insights drives its
+      breakdowns from the dominant currency and names what it excluded. No FX
+      conversion — that would mean a network dependency, caching and staleness
+      handling. The create form has a currency picker so input matches the maths.
+- [x] **Unit tests.** `jest-expo` (pinned to 54.x — latest peer-requires a newer
+      React than SDK 54 ships). Covers the date/money helpers and the store,
+      including the icon persistence round trip.
+- [x] **Renewal notifications.** Local scheduled reminders a couple of days
+      before each active renewal — see `lib/notifications.ts`. Expo Go's *push*
+      (remote) support is limited on recent SDKs, but local scheduling works
+      there; no development build needed for this specifically.
+- [x] **Subscription detail route.** `app/subscriptions/[id].tsx` was a dead
+      stub nothing linked to; it now shows the full record and is reachable from
+      the list.
+- [x] **Delete, pause/resume, status filters.**
 
-## P1 — expected of a subscription tracker
+## P0
 
-- [ ] **Renewal notifications.** The core value proposition ("never miss a
-      payment", per the sign-up copy) is currently not implemented at all.
-      `expo-notifications`, scheduled per subscription, rescheduled on edit.
-- [ ] **`app/subscriptions/[id].tsx` is a stub** rendering `Subscription
-      Details: {id}`. Nothing links to it. Either build the detail view or
-      delete the route — a dead route is worse than no route.
-- [ ] **No delete.** Cancel marks status; there's no way to remove a row added
-      by mistake.
-- [ ] **Nothing can set `status: 'paused'`.** The status exists in the type, the
-      seed data, and the Insights breakdown, but no UI produces it.
-- [ ] **Status filtering** on the Subscriptions list (active / paused /
-      cancelled chips). The `.category-chip` styles already exist and would
-      carry it.
+- [ ] **Nothing consumes `hasHydrated`.** The store exposes it, but every screen
+      still renders the seed list on first paint and swaps to real data when
+      AsyncStorage resolves — so a user with no subscriptions briefly sees four
+      they don't own. Gate the lists on it.
+- [ ] **`expo export` belongs in the verification loop.** Typecheck, lint and
+      tests all passed clean while the web build was completely broken by a
+      native module touching `window` during static prerender. CI runs it now;
+      remember it locally too.
+
+## P1
+
+- [ ] **Duplicate detection** when creating a subscription that already exists.
+- [ ] **Empty state** for a brand-new account — the list just says "No
+      subscriptions yet" with no path forward.
+- [ ] **Reminder scheduling has no debounce.** Every store change reschedules
+      everything. Stable identifiers mean redundant work rather than duplicate
+      notifications, so it's a cost issue, not a correctness one.
+- [ ] **Renewals inside the lead window get no reminder at all.** A plan
+      renewing tomorrow is skipped because the two-day reminder time is already
+      past. Arguably it should notify immediately instead.
 
 ## P2 — polish with real payoff
 
@@ -44,9 +59,8 @@ Prioritised by "how badly does its absence hurt a real user", not by effort.
       `muted-foreground` over `card` is untested against WCAG AA.
 - [ ] **Dark mode.** `app.json` sets `userInterfaceStyle: "automatic"` but there
       is only a light palette, so the OS setting does nothing.
-- [ ] **Duplicate detection** when creating a subscription that already exists.
-- [ ] **Empty state** for a brand-new account — the list just says "No
-      subscriptions yet" with no path forward.
+- [ ] **Settings screen is account-only.** No reminder lead-time control, no
+      display-currency preference, no way to clear stored data.
 
 ## Known cosmetic debt
 
@@ -54,7 +68,15 @@ Prioritised by "how badly does its absence hurt a real user", not by effort.
   fill rather than an outline.
 - `.sub-icon` gained `bg-background`, which puts a cream tile behind logos on
   collapsed cards that have a coloured background.
-- `package.json` has a `reset-project` script pointing at
-  `scripts/reset-project.js`, which does not exist.
-- 7 lint warnings, all `import/no-named-as-default` on `clsx` plus one unused
-  import in a placeholder screen. Harmless, but they mask new warnings.
+- `app/subscriptions/[id].tsx` reuses `.insights-card` for its info panel — a
+  cross-screen class leak that will rot. Wants its own `detail-*` class.
+- 7 lint warnings, all `import/no-named-as-default` on `clsx`. Harmless, but
+  they mask new warnings.
+
+## Not verified anywhere
+
+Layout, keyboard, gesture and notification behaviour have never been exercised
+on a device or simulator — every screen sits behind Clerk sign-in, so the web
+preview can't reach them, and the date picker and blur are native-only. The
+modal sheet sizing in particular was wrong twice before landing on its current
+form. Treat all of it as unproven until someone runs it.
