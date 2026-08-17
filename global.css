@@ -242,6 +242,10 @@
         @apply py-4 text-sm font-sans-medium text-black/60;
     }
 
+    .hydration-gate {
+        @apply items-center py-10;
+    }
+
     /* `bottom` is set at runtime from the safe-area insets. */
     .fab {
         @apply absolute right-0 size-14 items-center justify-center rounded-full bg-accent shadow-lg shadow-black/25;

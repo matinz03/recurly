@@ -27,10 +27,10 @@ Prioritised by "how badly does its absence hurt a real user", not by effort.
 
 ## P0
 
-- [ ] **Nothing consumes `hasHydrated`.** The store exposes it, but every screen
-      still renders the seed list on first paint and swaps to real data when
-      AsyncStorage resolves — so a user with no subscriptions briefly sees four
-      they don't own. Gate the lists on it.
+- [x] **Consume `hasHydrated`.** All four consumers now gate on it, so no screen
+      presents the seed list as real. The detail route mattered most: it was
+      claiming a real subscription "couldn't be found" whenever a deep link beat
+      hydration.
 - [ ] **`expo export` belongs in the verification loop.** Typecheck, lint and
       tests all passed clean while the web build was completely broken by a
       native module touching `window` during static prerender. CI runs it now;

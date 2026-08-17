@@ -5,6 +5,7 @@ import { styled } from 'nativewind';
 import { useMemo } from 'react';
 import { icons } from '@/constants/icons';
 import SubscriptionIcon from '@/components/SubscriptionIcon';
+import HydrationGate from '@/components/HydrationGate';
 import { useSubscriptionStore } from '@/lib/subscriptionStore';
 import { daysUntil, formatCurrency, formatStatusLabel, formatSubscriptionDateTime, nextRenewalDate } from '@/lib/utils';
 
@@ -13,7 +14,7 @@ const SafeAreaView = styled(RNSafeAreaView);
 const SubscriptionDetails = () => {
     const { id } = useLocalSearchParams<{ id: string }>();
     const router = useRouter();
-    const { subscriptions } = useSubscriptionStore();
+    const { subscriptions, hasHydrated } = useSubscriptionStore();
 
     const subscription = useMemo(
         () => subscriptions.find((item) => item.id === id),
@@ -42,7 +43,12 @@ const SubscriptionDetails = () => {
                 <View className="detail-header-spacer" />
             </View>
 
-            {!subscription ? (
+            {/* Before hydration the store still holds the seed list, so a
+                real id can look missing. Claiming "not found" and then
+                rendering it a moment later is worse than a brief spinner. */}
+            {!hasHydrated ? (
+                <HydrationGate />
+            ) : !subscription ? (
                 <View className="detail-missing">
                     <Text className="detail-missing-text">
                         This subscription couldn&apos;t be found. It may have been removed, or the link is out of date.

@@ -10,6 +10,7 @@ import UpcomingSubscriptionCard from "@/components/UpcomingSubscriptionCard";
 import SubscriptionCard from "@/components/SubscriptionCard";
 import CreateSubscriptionModal from "@/components/CreateSubscriptionModal";
 import AddSubscriptionButton from "@/components/AddSubscriptionButton";
+import HydrationGate from "@/components/HydrationGate";
 import {useMemo, useState} from "react";
 import { useRouter } from "expo-router";
 import { useUser } from '@clerk/expo';
@@ -20,11 +21,18 @@ const SafeAreaView = styled(RNSafeAreaView);
 /** How many renewals the Upcoming carousel shows. */
 const UPCOMING_LIMIT = 5;
 
+/** Stable reference so the hydration fallback can't bust useMemo deps. */
+const NO_SUBSCRIPTIONS: Subscription[] = [];
+
 export default function App() {
     const { user } = useUser();
     const router = useRouter();
     const [isCreateModalVisible, setIsCreateModalVisible] = useState(false);
-    const { subscriptions, addSubscription } = useSubscriptionStore();
+    const { subscriptions: stored, addSubscription, hasHydrated } = useSubscriptionStore();
+
+    // Until AsyncStorage resolves, `stored` is still the seed list - rendering it
+    // would show a returning user four subscriptions they don't own.
+    const subscriptions = hasHydrated ? stored : NO_SUBSCRIPTIONS;
     const { expandedId, toggleExpanded } = useExpandedSubscription();
 
     // Get user display name: firstName, fullName, or email
@@ -114,7 +122,7 @@ export default function App() {
                                     keyExtractor={(item) => item.id}
                                     horizontal
                                     showsHorizontalScrollIndicator={false}
-                                    ListEmptyComponent={<Text className="home-empty-state">No upcoming renewals yet.</Text>}
+                                    ListEmptyComponent={hasHydrated ? <Text className="home-empty-state">No upcoming renewals yet.</Text> : null}
                                 />
                             </View>
 
@@ -136,7 +144,7 @@ export default function App() {
                     extraData={expandedId}
                     ItemSeparatorComponent={() => <View className="h-4" />}
                     showsVerticalScrollIndicator={false}
-                    ListEmptyComponent={<Text className="home-empty-state">No subscriptions yet.</Text>}
+                    ListEmptyComponent={hasHydrated ? <Text className="home-empty-state">No subscriptions yet.</Text> : <HydrationGate />}
                     contentContainerClassName="pb-30"
                 />
 

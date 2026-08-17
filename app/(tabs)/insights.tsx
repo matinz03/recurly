@@ -3,6 +3,7 @@ import { SafeAreaView as RNSafeAreaView } from "react-native-safe-area-context";
 import { styled } from "nativewind";
 import { useMemo } from 'react';
 import ListHeading from '@/components/ListHeading';
+import HydrationGate from '@/components/HydrationGate';
 import { formatCurrency, monthlyPrice, totalsByCurrency } from '@/lib/utils';
 import { useSubscriptionStore } from '@/lib/subscriptionStore';
 
@@ -11,8 +12,15 @@ const SafeAreaView = styled(RNSafeAreaView);
 const TOP_LIMIT = 5;
 const STATUSES = ['active', 'paused', 'cancelled'] as const;
 
+/** Stable reference so the hydration fallback can't bust useMemo deps. */
+const NO_SUBSCRIPTIONS: Subscription[] = [];
+
 const Insights = () => {
-    const { subscriptions } = useSubscriptionStore();
+    const { subscriptions: stored, hasHydrated } = useSubscriptionStore();
+
+    // Spend totals for subscriptions the user may not own are worse than no
+    // totals - don't compute anything until AsyncStorage has resolved.
+    const subscriptions = hasHydrated ? stored : NO_SUBSCRIPTIONS;
 
     const insights = useMemo(() => {
         // Only active plans are money you're actually committed to; paused and
@@ -72,6 +80,9 @@ const Insights = () => {
         <SafeAreaView className="flex-1 bg-background p-5">
             <ListHeading title="Insights" />
 
+            {!hasHydrated ? (
+                <HydrationGate />
+            ) : (
             <ScrollView
                 className="insights-scroll"
                 showsVerticalScrollIndicator={false}
@@ -168,6 +179,7 @@ const Insights = () => {
                     </View>
                 </View>
             </ScrollView>
+            )}
         </SafeAreaView>
     )
 }

@@ -8,6 +8,7 @@ import { colors } from "@/constants/theme";
 import SubscriptionCard from "@/components/SubscriptionCard";
 import CreateSubscriptionModal from "@/components/CreateSubscriptionModal";
 import AddSubscriptionButton from "@/components/AddSubscriptionButton";
+import HydrationGate from "@/components/HydrationGate";
 import { nextRenewalDate } from "@/lib/utils";
 import { useSubscriptionStore } from "@/lib/subscriptionStore";
 import { useExpandedSubscription } from "@/lib/useExpandedSubscription";
@@ -15,6 +16,9 @@ import { useExpandedSubscription } from "@/lib/useExpandedSubscription";
 const SafeAreaView = styled(RNSafeAreaView);
 
 type StatusFilter = 'all' | SubscriptionStatus;
+
+/** Stable reference so the hydration fallback can't bust useMemo deps. */
+const NO_SUBSCRIPTIONS: Subscription[] = [];
 
 const STATUS_FILTERS: { key: StatusFilter; label: string }[] = [
     { key: 'all', label: 'All' },
@@ -33,7 +37,8 @@ const Subscriptions = () => {
     const [editing, setEditing] = useState<Subscription | null>(null);
     const [isModalVisible, setIsModalVisible] = useState(false);
     const {
-        subscriptions,
+        subscriptions: stored,
+        hasHydrated,
         addSubscription,
         updateSubscription,
         cancelSubscription,
@@ -41,6 +46,10 @@ const Subscriptions = () => {
         setSubscriptionStatus,
     } = useSubscriptionStore();
     const { expandedId, toggleExpanded } = useExpandedSubscription();
+
+    // Until AsyncStorage resolves, `stored` is still the seed list - filtering
+    // and counting it would show numbers that change under the user.
+    const subscriptions = hasHydrated ? stored : NO_SUBSCRIPTIONS;
 
     // Search narrows first so the filter chips' counts (below) reflect what's
     // actually reachable by the current search text, not the whole list.
@@ -222,7 +231,7 @@ const Subscriptions = () => {
                 // softwareKeyboardLayoutMode to "resize", which already shrinks
                 // the window, so adding our own spacer would double-count it.
                 automaticallyAdjustKeyboardInsets
-                ListEmptyComponent={<Text className="home-empty-state">No subscriptions match your search and filters.</Text>}
+                ListEmptyComponent={hasHydrated ? <Text className="home-empty-state">No subscriptions match your search and filters.</Text> : <HydrationGate />}
                 contentContainerClassName="pb-30"
             />
 
