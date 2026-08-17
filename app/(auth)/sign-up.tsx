@@ -6,7 +6,7 @@ import { SafeAreaView as RNSafeAreaView } from 'react-native-safe-area-context';
 import { styled } from 'nativewind';
 import { posthog } from '@/lib/posthog';
 import { useThemeColors } from '@/constants/theme';
-import clsx from 'clsx';
+import { clsx } from 'clsx';
 
 const SafeAreaView = styled(RNSafeAreaView);
 

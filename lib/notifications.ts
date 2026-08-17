@@ -19,6 +19,13 @@ const isSupportedPlatform = Platform.OS !== 'web';
 /** Local hour the reminder fires at, on the lead day. */
 const RENEWAL_REMINDER_HOUR = 9;
 
+// How soon to fire a reminder whose ideal time already passed. Not immediate:
+// rescheduling runs on every store change and app start, so an instant fire
+// would be jarring and repeat. Note the tradeoff - once such a reminder has
+// been delivered it is no longer "scheduled", so reopening the app inside the
+// window can queue another. Tracking delivery would need persisted state.
+const CATCH_UP_DELAY_MINUTES = 60;
+
 const ANDROID_CHANNEL_ID = 'renewal-reminders';
 
 // Stamped into every reminder's `content.data`. `getAllScheduledNotificationsAsync`
@@ -103,7 +110,15 @@ const reminderTimingFor = (subscription: Subscription, leadDays: number): Remind
         .second(0)
         .millisecond(0);
 
-    return reminderDate.isAfter(dayjs()) ? { renewalDate, reminderDate } : null;
+    const now = dayjs();
+    if (reminderDate.isAfter(now)) return { renewalDate, reminderDate };
+
+    // The ideal reminder time has passed but the charge hasn't happened yet -
+    // the case where a heads-up matters most. Previously this returned null, so
+    // a plan renewing tomorrow produced no reminder at all. Fire shortly
+    // instead, as long as that still lands before the renewal.
+    const fallback = now.add(CATCH_UP_DELAY_MINUTES, 'minute');
+    return fallback.isBefore(renewalDate) ? { renewalDate, reminderDate: fallback } : null;
 };
 
 const cancelOwnReminders = async (): Promise<void> => {

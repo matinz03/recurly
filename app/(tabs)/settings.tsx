@@ -9,7 +9,7 @@ import { notifyDestructive } from '@/lib/haptics';
 import { REMINDER_LEAD_DAY_OPTIONS, usePreferencesStore, type ReminderLeadDays } from '@/lib/preferencesStore';
 import { useSubscriptionStore } from '@/lib/subscriptionStore';
 import { useState } from 'react';
-import clsx from 'clsx';
+import { clsx } from 'clsx';
 const SafeAreaView = styled(RNSafeAreaView);
 
 const Settings = () => {

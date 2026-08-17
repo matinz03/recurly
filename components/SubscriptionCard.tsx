@@ -4,7 +4,7 @@ import {Feather} from '@expo/vector-icons'
 import {formatCurrency, formatStatusLabel, formatSubscriptionDateTime} from "@/lib/utils";
 import SubscriptionIcon from "@/components/SubscriptionIcon";
 import {colors, useThemeColors} from "@/constants/theme";
-import clsx from "clsx";
+import { clsx } from "clsx";
 
 const SubscriptionCard = ({ name, price, currency, icon, billing, color, category, plan, renewalDate, expanded, onPress, onEditPress, onCancelPress, onDeletePress, onPauseResumePress, paymentMethod, startDate, status}: SubscriptionCardProps) => {
     const themeColors = useThemeColors();

@@ -3,7 +3,7 @@ import { BlurView } from 'expo-blur';
 import DateTimePicker, { DateTimePickerAndroid, type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { Feather } from '@expo/vector-icons';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import clsx from 'clsx';
+import { clsx } from 'clsx';
 import dayjs, { type Dayjs } from 'dayjs';
 import { icons } from '@/constants/icons';
 import { useThemeColors } from '@/constants/theme';

@@ -8,7 +8,7 @@ import * as Linking from 'expo-linking';
 import { AntDesign } from '@expo/vector-icons';
 import { useThemeColors } from '@/constants/theme';
 import { posthog } from '@/lib/posthog';
-import clsx from 'clsx';
+import { clsx } from 'clsx';
 
 const SafeAreaView = styled(RNSafeAreaView);
 

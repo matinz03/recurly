@@ -50,9 +50,10 @@ Prioritised by "how badly does its absence hurt a real user", not by effort.
 - [ ] **Reminder scheduling has no debounce.** Every store change reschedules
       everything. Stable identifiers mean redundant work rather than duplicate
       notifications, so it's a cost issue, not a correctness one.
-- [ ] **Renewals inside the lead window get no reminder at all.** A plan
-      renewing tomorrow is skipped because the two-day reminder time is already
-      past. Arguably it should notify immediately instead.
+- [x] **Renewals inside the lead window now get a catch-up reminder** an hour
+      out, rather than being skipped entirely. Tradeoff: once delivered, such a
+      reminder is no longer "scheduled", so reopening the app inside the window
+      can queue another. Suppressing that needs persisted delivery state.
 
 ## P2 — polish with real payoff
 
@@ -99,8 +100,8 @@ Prioritised by "how badly does its absence hurt a real user", not by effort.
   collapsed cards that have a coloured background.
 - `app/subscriptions/[id].tsx` reuses `.insights-card` for its info panel — a
   cross-screen class leak that will rot. Wants its own `detail-*` class.
-- 7 lint warnings, all `import/no-named-as-default` on `clsx`. Harmless, but
-  they mask new warnings.
+- ~~7 lint warnings on `clsx`~~ — fixed by switching to the named import.
+  Lint is at zero, so a new warning is now visible instead of lost in noise.
 
 ## Not verified anywhere
 

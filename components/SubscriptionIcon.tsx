@@ -1,7 +1,7 @@
 import { Image, View } from 'react-native';
 import type { ImageSourcePropType } from 'react-native';
 import { SvgXml } from 'react-native-svg';
-import clsx from 'clsx';
+import { clsx } from 'clsx';
 
 interface SubscriptionIconProps {
     icon: ImageSourcePropType | string;
