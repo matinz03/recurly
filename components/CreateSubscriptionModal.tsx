@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import clsx from 'clsx';
 import dayjs, { type Dayjs } from 'dayjs';
 import { icons } from '@/constants/icons';
-import { colors } from '@/constants/theme';
+import { useThemeColors } from '@/constants/theme';
 import { posthog } from '@/lib/posthog';
 import { findDuplicateSubscriptionByName, nextRenewalDate } from '@/lib/utils';
 import { matchSubscriptionIcon } from '@/lib/matchSubscriptionIcon';
@@ -34,6 +34,12 @@ const FREQUENCIES: Frequency[] = ['Monthly', 'Yearly'];
 const CATEGORIES: Category[] = ['Entertainment', 'AI Tools', 'Developer Tools', 'Design', 'Productivity', 'Other'];
 const CURRENCIES: Currency[] = ['USD', 'EUR', 'GBP', 'CAD', 'JPY'];
 
+// Fixed pastels, not theme tokens - these are data (a category identifier
+// that gets persisted on the subscription and rendered as a card
+// background), not the app's palette, so they deliberately don't adapt to
+// dark mode. They stay light in both themes, and SubscriptionCard/[id].tsx
+// paint the ink on top of them with the static light-theme colors for the
+// same reason - see docs/DECISIONS.md.
 const CATEGORY_COLORS: Record<Category, string> = {
     Entertainment: '#ff6b6b',
     'AI Tools': '#b8d4e3',
@@ -52,6 +58,7 @@ const isCurrency = (value?: string): value is Currency =>
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 const CreateSubscriptionModal = ({ visible, onClose, onSubmit, subscription, existingSubscriptions }: CreateSubscriptionModalProps) => {
+    const colors = useThemeColors();
     const isEditing = !!subscription;
 
     const [name, setName] = useState('');
@@ -234,7 +241,7 @@ const CreateSubscriptionModal = ({ visible, onClose, onSubmit, subscription, exi
                                 <TextInput
                                     className="auth-input"
                                     placeholder="Subscription name"
-                                    placeholderTextColor="rgba(0, 0, 0, 0.4)"
+                                    placeholderTextColor={colors.placeholder}
                                     value={name}
                                     onChangeText={setName}
                                 />
@@ -250,7 +257,7 @@ const CreateSubscriptionModal = ({ visible, onClose, onSubmit, subscription, exi
                                 <TextInput
                                     className="auth-input"
                                     placeholder="0.00"
-                                    placeholderTextColor="rgba(0, 0, 0, 0.4)"
+                                    placeholderTextColor={colors.placeholder}
                                     value={price}
                                     onChangeText={setPrice}
                                     keyboardType="decimal-pad"
@@ -302,6 +309,9 @@ const CreateSubscriptionModal = ({ visible, onClose, onSubmit, subscription, exi
                                         {startDate.format('MM/DD/YYYY')}
                                     </Text>
                                     <Feather name="calendar" size={18} color={colors.mutedForeground} />
+                                    {/* colors here is useThemeColors()'s reactive palette, not the
+                                        static export - this icon sits on `.auth-input`'s themed
+                                        bg-background, so it should follow the app theme. */}
                                 </Pressable>
                                 {Platform.OS === 'ios' && showIosDatePicker && (
                                     <DateTimePicker

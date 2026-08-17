@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { styled } from 'nativewind';
 import { useMemo } from 'react';
 import { icons } from '@/constants/icons';
+import { colors } from '@/constants/theme';
 import SubscriptionIcon from '@/components/SubscriptionIcon';
 import HydrationGate from '@/components/HydrationGate';
 import { useSubscriptionStore } from '@/lib/subscriptionStore';
@@ -59,12 +60,16 @@ const SubscriptionDetails = () => {
                 </View>
             ) : (
                 <ScrollView showsVerticalScrollIndicator={false} contentContainerClassName="detail-content">
+                    {/* subscription.color is the fixed category pastel (data, not
+                        theme - see docs/DECISIONS.md), so the ink on top of it uses
+                        the static light-theme colors, never the app's dark-mode ink,
+                        or it would vanish against a light pastel in dark mode. */}
                     <View className="detail-hero" style={subscription.color ? { backgroundColor: subscription.color } : undefined}>
                         <SubscriptionIcon icon={subscription.icon} className="detail-hero-icon" svgSize={48} />
-                        <Text numberOfLines={2} className="detail-name">{subscription.name}</Text>
+                        <Text numberOfLines={2} className="detail-name" style={subscription.color ? { color: colors.primary } : undefined}>{subscription.name}</Text>
                         <View className="detail-price-row">
-                            <Text className="detail-price">{formatCurrency(subscription.price, subscription.currency)}</Text>
-                            <Text className="detail-billing">/ {subscription.billing}</Text>
+                            <Text className="detail-price" style={subscription.color ? { color: colors.primary } : undefined}>{formatCurrency(subscription.price, subscription.currency)}</Text>
+                            <Text className="detail-billing" style={subscription.color ? { color: colors.mutedForeground } : undefined}>/ {subscription.billing}</Text>
                         </View>
                         <View className="detail-status-badge">
                             <Text className="detail-status-text">{formatStatusLabel(subscription.status)}</Text>

@@ -168,6 +168,98 @@ doesn't break.
 Reduce-motion is honoured, read from a ref for the same synchronous-read reason
 the expanded id is.
 
+## Dark mode follows the OS, via CSS variables, not a `.dark` class
+
+NativeWind v5 (`^5.0.0-preview.4`) is a thin wrapper over `react-native-css`,
+which is what actually compiles the Tailwind output. Checked directly against
+`node_modules/react-native-css/dist/module/compiler/selectors.js`: a
+`@media (prefers-color-scheme: dark) { :root { ... } }` block (CSS variable
+overrides) and `dark:` utility variants both compile through the same
+generic media-query path and work today. A class-based `.dark` ancestor
+selector (`darkMode: "class"`, the mechanism most v2/v4 tutorials assume) is
+explicitly **not** wired up - the matching branches in that file are present
+only as commented-out code. That rules out an in-app light/dark toggle
+without a class strategy nobody has built yet, which is moot anyway: the
+brief was to follow `userInterfaceStyle: "automatic"`, not add a preference.
+
+Confirmed against the real build too, not just the source: `npx expo export
+--platform web` and inspecting the emitted CSS shows the `@theme` overrides
+and every `dark:` utility compiled into their own
+`@media (prefers-color-scheme: dark)` blocks.
+
+## Dark mode palette: darkened accent, not inverted, lightened `muted`
+
+The dark palette (see `global.css`'s media-query override block and
+`constants/theme.ts`'s `darkColors`) is warm near-black/brown surfaces with a
+warm ivory ink, not a straight inversion of the light tokens. Two choices
+need the reasoning written down or a future edit will "simplify" them back
+into a contrast bug:
+
+- **`accent` is darker in dark mode, not just desaturated.** In light mode
+  `accent` is a fill holding *dark navy* ink (`text-primary`) on top, so a
+  bright coral works. In dark mode `primary` is light ink, so the same fill
+  now sits under *light* text - keeping the light-mode brightness would blow
+  out that contrast (measured ~2.7:1 against light ink). The dark accent
+  (`#a84c2b`, a deeper terracotta) is deliberately dark enough to hold ~4.5:1
+  under light ink and white alike, at the cost of being weaker as a small
+  *text* colour on the page background (~3.3-3.6:1) - same trade-off the
+  light theme already makes (`text-accent` on `background` is ~2.7:1 there),
+  just less bad. Left under AA there in both themes; fixing it would mean
+  picking a different accent hue entirely, not a lighter/darker version of
+  this one.
+- **`muted` is lighter than a "dark surface" token would usually be.**
+  `icons.back` and `icons.add` are bundled PNGs baked to a fixed dark-navy
+  colour with no runtime tint (confirmed by opening the assets - unlike the
+  tab bar's icons, which are baked white and are the reason the tab bar
+  background is pinned to a fixed colour regardless of theme, see below).
+  They render inside `bg-muted`/`bg-accent` tiles (`.detail-back`, `.fab`),
+  so `muted` has to stay light enough for a fixed dark glyph to clear
+  WCAG's 3:1 non-text contrast floor against it. The fallback subscription
+  icon (`icons.plus`, also fixed dark-navy) has the same problem inside
+  `.sub-icon`/`.upcoming-icon`/`.detail-hero-icon`, which normally use
+  `bg-background` (too dark for this in dark mode) - those three classes get
+  a `dark:bg-muted` override rather than changing `background` itself.
+
+## Tab bar chrome is pinned, not theme-reactive
+
+The tab bar's icons (`icons.home`, `icons.wallet`, `icons.activity`,
+`icons.setting`) are bundled PNGs baked white, with no runtime tint applied
+in `TabIcon`. Following the theme for the bar's background would mean the
+icons vanish into it half the time, so `app/(tabs)/_layout.tsx` uses a new
+`NAV_CHROME_BACKGROUND` constant (`constants/theme.ts`) instead of the
+theme-reactive palette - fixed dark in both light and dark mode, same as
+before dark mode existed. A real fix would recolour or re-export those PNGs
+per theme; out of scope here (icon assets and `constants/icons.ts` aren't
+part of this change).
+
+## Category colours are data, not theme, and stay fixed
+
+`CATEGORY_COLORS` in `CreateSubscriptionModal` and the `color` persisted on
+each subscription render as card backgrounds (`SubscriptionCard`,
+`app/subscriptions/[id].tsx`). They're fixed pastels chosen to hold dark ink,
+not part of the app's palette, so they don't adapt to dark mode - inverting
+them would need a wholly different set of colours, not a themed version of
+the same ones, and they're independent of `userInterfaceStyle` by design (a
+category is the same category regardless of OS appearance).
+
+The consequence has to be handled explicitly, though: the app's ink
+(`primary`/`mutedForeground`) *does* flip to light text in dark mode, and
+light text on a light pastel is invisible. So the text painted directly on a
+fixed pastel (`SubscriptionCard`'s collapsed head row when `color` is set;
+`[id].tsx`'s hero name/price/billing) is pinned to the static light-theme ink
+(`colors`, `constants/theme.ts`'s original export) instead of
+`useThemeColors()`'s reactive one. Everything else on those screens -
+expanded cards (`bg-subscription`, themed), the status badge inside the hero
+(its own `bg-background` fill, themed) - keeps reacting normally.
+
+## `.home-balance-*` keeps literal `text-white`, not theme ink
+
+The home balance card is always a solid `bg-accent` fill, never inverted, so
+its text stays literal white in both themes rather than switching to
+`text-primary`. White-on-accent is actually better in dark mode (~5.6:1) than
+in light mode, where it's a pre-existing gap (~2.7:1, not introduced or fixed
+by this change - see the "Accessibility pass" roadmap item).
+
 ## Haptics fire on outcomes, not on intent
 
 A destructive haptic on *tapping* Cancel or Delete buzzes the user for being

@@ -69,8 +69,13 @@ Prioritised by "how badly does its absence hurt a real user", not by effort.
 - [ ] **Accessibility pass.** Interactive elements have labels, but the card
       itself doesn't announce expanded state, and contrast on
       `muted-foreground` over `card` is untested against WCAG AA.
-- [ ] **Dark mode.** `app.json` sets `userInterfaceStyle: "automatic"` but there
-      is only a light palette, so the OS setting does nothing.
+- [x] **Dark mode.** Follows `userInterfaceStyle: "automatic"` via
+      `@media (prefers-color-scheme: dark)` CSS-variable overrides in
+      `global.css`, plus a `useThemeColors()` hook in `constants/theme.ts`
+      for the JS-side colours (vector-icon `color` props, placeholders,
+      `ActivityIndicator`). No in-app toggle - see docs/DECISIONS.md for the
+      palette rationale, the two bundled-PNG-icon constraints it works
+      around, and why category colours and the tab bar stay fixed.
 - [ ] **Settings screen is account-only.** No reminder lead-time control, no
       display-currency preference, no way to clear stored data.
 

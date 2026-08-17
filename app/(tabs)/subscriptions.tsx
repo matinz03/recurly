@@ -4,7 +4,7 @@ import { SafeAreaView as RNSafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { styled } from "nativewind";
 import { Feather } from '@expo/vector-icons';
-import { colors } from "@/constants/theme";
+import { useThemeColors } from "@/constants/theme";
 import SubscriptionCard from "@/components/SubscriptionCard";
 import CreateSubscriptionModal from "@/components/CreateSubscriptionModal";
 import AddSubscriptionButton from "@/components/AddSubscriptionButton";
@@ -30,6 +30,7 @@ const STATUS_FILTERS: { key: StatusFilter; label: string }[] = [
 ];
 
 const Subscriptions = () => {
+    const colors = useThemeColors();
     // Set by Home's "View all" on the Upcoming heading.
     const { sort } = useLocalSearchParams<{ sort?: string }>();
     const router = useRouter();
@@ -171,7 +172,7 @@ const Subscriptions = () => {
                     value={query}
                     onChangeText={setQuery}
                     placeholder="Search by name, category, or plan"
-                    placeholderTextColor="rgba(0, 0, 0, 0.4)"
+                    placeholderTextColor={colors.placeholder}
                     autoCapitalize="none"
                     autoCorrect={false}
                     returnKeyType="search"

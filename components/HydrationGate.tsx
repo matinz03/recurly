@@ -1,5 +1,5 @@
 import { ActivityIndicator, View } from 'react-native';
-import { colors } from '@/constants/theme';
+import { useThemeColors } from '@/constants/theme';
 
 /**
  * Placeholder for the gap between first paint and AsyncStorage resolving.
@@ -9,10 +9,13 @@ import { colors } from '@/constants/theme';
  * this in for that window rather than flashing seed subscriptions - or, worse,
  * an empty state or a "not found" that contradicts what's about to appear.
  */
-const HydrationGate = () => (
-    <View className="hydration-gate">
-        <ActivityIndicator color={colors.accent} />
-    </View>
-);
+const HydrationGate = () => {
+    const colors = useThemeColors();
+    return (
+        <View className="hydration-gate">
+            <ActivityIndicator color={colors.accent} />
+        </View>
+    );
+};
 
 export default HydrationGate;
