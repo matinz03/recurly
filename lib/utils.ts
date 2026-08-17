@@ -100,3 +100,35 @@ export const totalsByCurrency = (subscriptions: Subscription[]): CurrencyTotal[]
     }))
     .sort((a, b) => b.monthly - a.monthly);
 };
+
+// Same normalize-then-compare shape as matchSubscriptionIcon's brand lookup:
+// lowercase and strip everything but letters/digits, so "Netflix", "netflix!"
+// and "NET FLIX" all collapse to the same key.
+const normalizeSubscriptionName = (name: string): string =>
+    name.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+/**
+ * Finds an existing subscription whose name normalizes to the same value as
+ * `name` - a possible accidental duplicate, not a hard rule. Pass `excludeId`
+ * (the record being edited) so a subscription never matches itself when its
+ * name is unchanged; without it, editing "Netflix" without renaming would
+ * always "find" a duplicate.
+ *
+ * Returns the matching subscription (there may be legitimately more than
+ * one, e.g. two Netflix plans) or undefined when there's nothing to warn
+ * about, including when `name` is blank.
+ */
+export const findDuplicateSubscriptionByName = (
+    name: string,
+    subscriptions: Subscription[],
+    excludeId?: string,
+): Subscription | undefined => {
+    const normalized = normalizeSubscriptionName(name);
+    if (!normalized) return undefined;
+
+    return subscriptions.find(
+        (subscription) =>
+            subscription.id !== excludeId &&
+            normalizeSubscriptionName(subscription.name) === normalized,
+    );
+};

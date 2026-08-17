@@ -1,5 +1,5 @@
 import dayjs from 'dayjs';
-import { formatCurrency, monthlyPrice, nextRenewalDate, totalsByCurrency } from '@/lib/utils';
+import { findDuplicateSubscriptionByName, formatCurrency, monthlyPrice, nextRenewalDate, totalsByCurrency } from '@/lib/utils';
 
 const subscription = (overrides: Partial<Subscription> = {}): Subscription => ({
     id: 'test',
@@ -105,5 +105,41 @@ describe('totalsByCurrency', () => {
         expect(totalsByCurrency(subscriptions)).toEqual([
             { currency: 'USD', monthly: 10, yearly: 120, count: 1 },
         ]);
+    });
+});
+
+describe('findDuplicateSubscriptionByName', () => {
+    it('matches an exact existing name', () => {
+        const subscriptions = [subscription({ id: 'a', name: 'Netflix' })];
+        expect(findDuplicateSubscriptionByName('Netflix', subscriptions)?.id).toBe('a');
+    });
+
+    it('matches case- and punctuation-insensitively', () => {
+        const subscriptions = [subscription({ id: 'a', name: 'Netflix' })];
+        expect(findDuplicateSubscriptionByName('  NET-FLIX!! ', subscriptions)?.id).toBe('a');
+    });
+
+    it('returns undefined when nothing matches', () => {
+        const subscriptions = [subscription({ id: 'a', name: 'Netflix' })];
+        expect(findDuplicateSubscriptionByName('Spotify', subscriptions)).toBeUndefined();
+    });
+
+    it('does not flag a subscription against itself when editing', () => {
+        const subscriptions = [subscription({ id: 'a', name: 'Netflix' })];
+        expect(findDuplicateSubscriptionByName('Netflix', subscriptions, 'a')).toBeUndefined();
+    });
+
+    it('still flags a different subscription with the same name while editing another', () => {
+        const subscriptions = [
+            subscription({ id: 'a', name: 'Netflix' }),
+            subscription({ id: 'b', name: 'Netflix' }),
+        ];
+        // Editing 'b': 'a' is a genuine duplicate, so it must still surface.
+        expect(findDuplicateSubscriptionByName('Netflix', subscriptions, 'b')?.id).toBe('a');
+    });
+
+    it('ignores a blank name', () => {
+        const subscriptions = [subscription({ id: 'a', name: 'Netflix' })];
+        expect(findDuplicateSubscriptionByName('   ', subscriptions)).toBeUndefined();
     });
 });

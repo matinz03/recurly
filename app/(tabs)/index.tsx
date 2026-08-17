@@ -11,6 +11,7 @@ import SubscriptionCard from "@/components/SubscriptionCard";
 import CreateSubscriptionModal from "@/components/CreateSubscriptionModal";
 import AddSubscriptionButton from "@/components/AddSubscriptionButton";
 import HydrationGate from "@/components/HydrationGate";
+import EmptySubscriptions from "@/components/EmptySubscriptions";
 import {useMemo, useState} from "react";
 import { useRouter } from "expo-router";
 import { useUser } from '@clerk/expo';
@@ -144,7 +145,7 @@ export default function App() {
                     extraData={expandedId}
                     ItemSeparatorComponent={() => <View className="h-4" />}
                     showsVerticalScrollIndicator={false}
-                    ListEmptyComponent={hasHydrated ? <Text className="home-empty-state">No subscriptions yet.</Text> : <HydrationGate />}
+                    ListEmptyComponent={hasHydrated ? <EmptySubscriptions onAddPress={() => setIsCreateModalVisible(true)} /> : <HydrationGate />}
                     contentContainerClassName="pb-30"
                 />
 
@@ -152,6 +153,7 @@ export default function App() {
 
                 <CreateSubscriptionModal
                     visible={isCreateModalVisible}
+                    existingSubscriptions={subscriptions}
                     onClose={() => setIsCreateModalVisible(false)}
                     onSubmit={addSubscription}
                 />

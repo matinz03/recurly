@@ -38,9 +38,15 @@ Prioritised by "how badly does its absence hurt a real user", not by effort.
 
 ## P1
 
-- [ ] **Duplicate detection** when creating a subscription that already exists.
-- [ ] **Empty state** for a brand-new account — the list just says "No
-      subscriptions yet" with no path forward.
+- [x] **Duplicate detection** when creating a subscription that already
+      exists. `findDuplicateSubscriptionByName()` in `lib/utils.ts` warns
+      (never blocks) on a case-/punctuation-insensitive name match, excluding
+      the record being edited. `CreateSubscriptionModal` takes an optional
+      `existingSubscriptions` prop the screens still need to wire up.
+- [x] **Empty state** for a brand-new account. `components/EmptySubscriptions.tsx`
+      replaces the bare "No subscriptions yet" text with a short explanation
+      and an add-subscription call to action; the screens still need to swap
+      it in for `ListEmptyComponent`.
 - [ ] **Reminder scheduling has no debounce.** Every store change reschedules
       everything. Stable identifiers mean redundant work rather than duplicate
       notifications, so it's a cost issue, not a correctness one.

@@ -9,6 +9,7 @@ import SubscriptionCard from "@/components/SubscriptionCard";
 import CreateSubscriptionModal from "@/components/CreateSubscriptionModal";
 import AddSubscriptionButton from "@/components/AddSubscriptionButton";
 import HydrationGate from "@/components/HydrationGate";
+import EmptySubscriptions from "@/components/EmptySubscriptions";
 import { nextRenewalDate } from "@/lib/utils";
 import { useSubscriptionStore } from "@/lib/subscriptionStore";
 import { useExpandedSubscription } from "@/lib/useExpandedSubscription";
@@ -89,6 +90,15 @@ const Subscriptions = () => {
             return aNext.valueOf() - bNext.valueOf();
         });
     }, [searchMatches, statusFilter, sort]);
+
+    // An account with nothing in it needs a way forward; a search that matched
+    // nothing needs to say so. Showing "add your first subscription" to someone
+    // who has twelve and mistyped a filter would be nonsense.
+    const renderEmpty = () => {
+        if (!hasHydrated) return <HydrationGate />;
+        if (subscriptions.length === 0) return <EmptySubscriptions onAddPress={openCreate} />;
+        return <Text className="home-empty-state">No subscriptions match your search and filters.</Text>;
+    };
 
     const openCreate = useCallback(() => {
         setEditing(null);
@@ -231,7 +241,7 @@ const Subscriptions = () => {
                 // softwareKeyboardLayoutMode to "resize", which already shrinks
                 // the window, so adding our own spacer would double-count it.
                 automaticallyAdjustKeyboardInsets
-                ListEmptyComponent={hasHydrated ? <Text className="home-empty-state">No subscriptions match your search and filters.</Text> : <HydrationGate />}
+                ListEmptyComponent={renderEmpty()}
                 contentContainerClassName="pb-30"
             />
 
@@ -240,6 +250,7 @@ const Subscriptions = () => {
             <CreateSubscriptionModal
                 visible={isModalVisible}
                 subscription={editing}
+                existingSubscriptions={subscriptions}
                 onClose={() => setIsModalVisible(false)}
                 onSubmit={editing ? updateSubscription : addSubscription}
             />

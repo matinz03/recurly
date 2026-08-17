@@ -657,4 +657,38 @@
     .detail-renewal-days {
         @apply text-sm font-sans-semibold text-accent;
     }
+
+    .empty-subs {
+        @apply items-center gap-2 px-6 py-10;
+    }
+
+    .empty-subs-icon-wrap {
+        @apply mb-2 size-16 items-center justify-center rounded-full bg-muted;
+    }
+
+    .empty-subs-icon {
+        @apply size-8;
+    }
+
+    .empty-subs-title {
+        @apply text-lg font-sans-bold text-primary;
+    }
+
+    .empty-subs-copy {
+        @apply max-w-[280px] text-center text-sm font-sans-medium text-muted-foreground;
+    }
+
+    .empty-subs-button {
+        @apply mt-3 flex-row items-center gap-2 rounded-full bg-accent px-5 py-3;
+    }
+
+    .empty-subs-button-text {
+        @apply text-sm font-sans-bold text-primary;
+    }
+
+    /* Softer than .auth-error (destructive red) - a possible duplicate is a
+       warning to double-check, not a validation failure blocking submit. */
+    .auth-warning {
+        @apply text-xs font-sans-medium text-accent;
+    }
 }

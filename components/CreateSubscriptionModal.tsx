@@ -8,7 +8,7 @@ import dayjs, { type Dayjs } from 'dayjs';
 import { icons } from '@/constants/icons';
 import { colors } from '@/constants/theme';
 import { posthog } from '@/lib/posthog';
-import { nextRenewalDate } from '@/lib/utils';
+import { findDuplicateSubscriptionByName, nextRenewalDate } from '@/lib/utils';
 import { matchSubscriptionIcon } from '@/lib/matchSubscriptionIcon';
 import SubscriptionIcon from '@/components/SubscriptionIcon';
 
@@ -18,6 +18,9 @@ interface CreateSubscriptionModalProps {
     onSubmit: (subscription: Subscription) => void;
     /** When set, the form edits this subscription instead of creating one. */
     subscription?: Subscription | null;
+    /** Used only to warn on a likely-duplicate name; optional so the modal
+        still works if a caller hasn't wired the current list through yet. */
+    existingSubscriptions?: Subscription[];
 }
 
 type Frequency = 'Monthly' | 'Yearly';
@@ -48,7 +51,7 @@ const isCurrency = (value?: string): value is Currency =>
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-const CreateSubscriptionModal = ({ visible, onClose, onSubmit, subscription }: CreateSubscriptionModalProps) => {
+const CreateSubscriptionModal = ({ visible, onClose, onSubmit, subscription, existingSubscriptions }: CreateSubscriptionModalProps) => {
     const isEditing = !!subscription;
 
     const [name, setName] = useState('');
@@ -88,6 +91,15 @@ const CreateSubscriptionModal = ({ visible, onClose, onSubmit, subscription }: C
     const isValidForm = name.trim() !== '' && isValidPrice();
 
     const matchedIcon = useMemo(() => matchSubscriptionIcon(name), [name]);
+
+    // Excludes the record being edited by id, not by name - otherwise editing
+    // "Netflix" without renaming it would always "find" itself as a duplicate.
+    // This only ever warns; a second Netflix plan is a legitimate thing to
+    // create, so it never blocks submit.
+    const duplicateSubscription = useMemo(
+        () => findDuplicateSubscriptionByName(name, existingSubscriptions ?? [], subscription?.id),
+        [name, existingSubscriptions, subscription?.id]
+    );
 
     const resetForm = () => {
         setName('');
@@ -226,6 +238,11 @@ const CreateSubscriptionModal = ({ visible, onClose, onSubmit, subscription }: C
                                     value={name}
                                     onChangeText={setName}
                                 />
+                                {duplicateSubscription && (
+                                    <Text className="auth-warning">
+                                        You already have a subscription named &quot;{duplicateSubscription.name}&quot;. This will be tracked as a separate one.
+                                    </Text>
+                                )}
                             </View>
 
                             <View className="auth-field">
