@@ -79,7 +79,11 @@
     }
 
     .home-add-icon {
-        @apply size-12;
+        @apply size-12 items-center justify-center rounded-full bg-muted;
+    }
+
+    .home-add-icon-glyph {
+        @apply size-6;
     }
 
     .home-balance-card {
@@ -167,7 +171,7 @@
     }
 
     .sub-icon {
-        @apply size-16 rounded-lg;
+        @apply size-16 items-center justify-center rounded-lg bg-background;
     }
 
     .sub-copy {
@@ -359,11 +363,19 @@
     }
 
     .modal-overlay {
-        @apply flex-1 bg-black/50;
+        @apply flex-1;
     }
 
     .modal-container {
-        @apply mt-auto max-h-[85%] rounded-t-3xl bg-background;
+        @apply mt-auto rounded-t-3xl bg-background;
+    }
+
+    .modal-handle-row {
+        @apply items-center pb-1 pt-3;
+    }
+
+    .modal-handle {
+        @apply h-1.5 w-12 rounded-full border-2 border-accent bg-background;
     }
 
     .modal-header {

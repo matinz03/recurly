@@ -14,7 +14,8 @@ declare global {
 
     interface Subscription {
         id: string;
-        icon: ImageSourcePropType;
+        /** Bundled asset for known icons, or raw SVG markup for icons matched at creation time. */
+        icon: ImageSourcePropType | string;
         name: string;
         plan?: string;
         category?: string;
