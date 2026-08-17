@@ -1,11 +1,18 @@
 import {View, Text, Pressable} from 'react-native'
 import React from 'react'
+import {Feather} from '@expo/vector-icons'
 import {formatCurrency, formatStatusLabel, formatSubscriptionDateTime} from "@/lib/utils";
 import SubscriptionIcon from "@/components/SubscriptionIcon";
+import {colors} from "@/constants/theme";
 import clsx from "clsx";
 
-const SubscriptionCard = ({ name, price, currency, icon, billing, color, category, plan, renewalDate, expanded, onPress, onEditPress, onCancelPress, paymentMethod, startDate, status}: SubscriptionCardProps) => {
-    const isCancelled = status?.toLowerCase() === 'cancelled';
+const SubscriptionCard = ({ name, price, currency, icon, billing, color, category, plan, renewalDate, expanded, onPress, onEditPress, onCancelPress, onDeletePress, onPauseResumePress, paymentMethod, startDate, status}: SubscriptionCardProps) => {
+    const normalizedStatus = status?.toLowerCase();
+    const isCancelled = normalizedStatus === 'cancelled';
+    const isPaused = normalizedStatus === 'paused';
+    // Pausing/resuming a cancelled plan isn't offered - "resume" would mean
+    // reactivating it, which is a different action than this one performs.
+    const showPauseResume = !!onPauseResumePress && !isCancelled;
 
     return (
         <Pressable onPress={onPress} className={clsx('sub-card', expanded ? 'sub-card-expanded' : 'bg-card')} style={!expanded && color ? { backgroundColor: color } : undefined}>
@@ -64,14 +71,33 @@ const SubscriptionCard = ({ name, price, currency, icon, billing, color, categor
                     </View>
 
                     {/* Only rendered where handlers are wired up, so the Home
-                        list stays read-only. */}
-                    {(onEditPress || onCancelPress) && (
+                        list stays read-only. Two rows, not four equal buttons:
+                        Edit/Pause are routine and get equal-weight bordered
+                        buttons; Cancel/Delete are status-changing, so they sit
+                        below, and Delete - the only irreversible one - is a
+                        small icon affordance rather than a full-width button,
+                        so it never reads as more prominent than Cancel. */}
+                    {(onEditPress || showPauseResume) && (
                         <View className="sub-actions">
                             {onEditPress && (
                                 <Pressable className="sub-action" onPress={onEditPress} accessibilityLabel={`Edit ${name}`}>
                                     <Text className="sub-action-text">Edit</Text>
                                 </Pressable>
                             )}
+                            {showPauseResume && (
+                                <Pressable
+                                    className="sub-action"
+                                    onPress={onPauseResumePress}
+                                    accessibilityLabel={`${isPaused ? 'Resume' : 'Pause'} ${name}`}
+                                >
+                                    <Text className="sub-action-text">{isPaused ? 'Resume' : 'Pause'}</Text>
+                                </Pressable>
+                            )}
+                        </View>
+                    )}
+
+                    {(onCancelPress || onDeletePress) && (
+                        <View className="sub-actions-secondary">
                             {onCancelPress && (
                                 <Pressable
                                     className={clsx('sub-cancel flex-1', isCancelled && 'sub-cancel-disabled')}
@@ -81,6 +107,11 @@ const SubscriptionCard = ({ name, price, currency, icon, billing, color, categor
                                     accessibilityState={{ disabled: isCancelled }}
                                 >
                                     <Text className="sub-cancel-text">{isCancelled ? 'Cancelled' : 'Cancel'}</Text>
+                                </Pressable>
+                            )}
+                            {onDeletePress && (
+                                <Pressable className="sub-delete" onPress={onDeletePress} accessibilityLabel={`Delete ${name}`}>
+                                    <Feather name="trash-2" size={18} color={colors.destructive} />
                                 </Pressable>
                             )}
                         </View>

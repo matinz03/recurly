@@ -1,6 +1,9 @@
 import type { ImageSourcePropType } from "react-native";
 
 declare global {
+    /** The only statuses the store and every derived screen understand. */
+    type SubscriptionStatus = 'active' | 'paused' | 'cancelled';
+
     interface AppTab {
         name: string;
         title: string;
@@ -35,6 +38,10 @@ declare global {
         /** Action buttons render only where a handler is supplied. */
         onEditPress?: () => void;
         onCancelPress?: () => void;
+        /** Destructive and unrecoverable - kept as its own handler so a caller can't wire it up by accident while reaching for Cancel. */
+        onDeletePress?: () => void;
+        /** One handler for both directions - the card reads `status` to decide whether it reads "Pause" or "Resume", and hides itself once cancelled. */
+        onPauseResumePress?: () => void;
     }
 
     interface UpcomingSubscription {

@@ -14,24 +14,61 @@ import { useExpandedSubscription } from "@/lib/useExpandedSubscription";
 
 const SafeAreaView = styled(RNSafeAreaView);
 
+type StatusFilter = 'all' | SubscriptionStatus;
+
+const STATUS_FILTERS: { key: StatusFilter; label: string }[] = [
+    { key: 'all', label: 'All' },
+    { key: 'active', label: 'Active' },
+    { key: 'paused', label: 'Paused' },
+    { key: 'cancelled', label: 'Cancelled' },
+];
+
 const Subscriptions = () => {
     // Set by Home's "View all" on the Upcoming heading.
     const { sort } = useLocalSearchParams<{ sort?: string }>();
     const router = useRouter();
 
     const [query, setQuery] = useState('');
+    const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
     const [editing, setEditing] = useState<Subscription | null>(null);
     const [isModalVisible, setIsModalVisible] = useState(false);
-    const { subscriptions, addSubscription, updateSubscription, cancelSubscription } = useSubscriptionStore();
+    const {
+        subscriptions,
+        addSubscription,
+        updateSubscription,
+        cancelSubscription,
+        deleteSubscription,
+        setSubscriptionStatus,
+    } = useSubscriptionStore();
     const { expandedId, toggleExpanded } = useExpandedSubscription();
 
-    const visibleSubscriptions = useMemo(() => {
+    // Search narrows first so the filter chips' counts (below) reflect what's
+    // actually reachable by the current search text, not the whole list.
+    const searchMatches = useMemo(() => {
         const normalizedQuery = query.trim().toLowerCase();
-        const matches = normalizedQuery
+        return normalizedQuery
             ? subscriptions.filter(({ name, category, plan }) =>
                   [name, category, plan].some((field) => field?.toLowerCase().includes(normalizedQuery))
               )
             : subscriptions;
+    }, [query, subscriptions]);
+
+    const statusCounts = useMemo(() => {
+        const counts: Record<StatusFilter, number> = { all: searchMatches.length, active: 0, paused: 0, cancelled: 0 };
+        for (const { status } of searchMatches) {
+            const normalized = status?.toLowerCase();
+            if (normalized === 'active' || normalized === 'paused' || normalized === 'cancelled') {
+                counts[normalized] += 1;
+            }
+        }
+        return counts;
+    }, [searchMatches]);
+
+    const visibleSubscriptions = useMemo(() => {
+        const matches =
+            statusFilter === 'all'
+                ? searchMatches
+                : searchMatches.filter(({ status }) => status?.toLowerCase() === statusFilter);
 
         if (sort !== 'renewal') return matches;
 
@@ -42,7 +79,7 @@ const Subscriptions = () => {
             if (!bNext) return -1;
             return aNext.valueOf() - bNext.valueOf();
         });
-    }, [query, subscriptions, sort]);
+    }, [searchMatches, statusFilter, sort]);
 
     const openCreate = useCallback(() => {
         setEditing(null);
@@ -70,6 +107,29 @@ const Subscriptions = () => {
         );
     }, [cancelSubscription]);
 
+    // Delete is unrecoverable - there's no undo - so the copy leans hard on
+    // the distinction from Cancel, which merely marks status and keeps history.
+    const confirmDelete = useCallback((subscription: Subscription) => {
+        Alert.alert(
+            `Delete ${subscription.name}?`,
+            "This permanently removes it, including its history - there's no undo. To keep the record but stop billing, use Cancel instead.",
+            [
+                { text: 'Keep it', style: 'cancel' },
+                {
+                    text: 'Delete',
+                    style: 'destructive',
+                    onPress: () => deleteSubscription(subscription.id),
+                },
+            ]
+        );
+    }, [deleteSubscription]);
+
+    // Not destructive and fully reversible, so no confirmation - unlike Cancel/Delete.
+    const togglePauseResume = useCallback((subscription: Subscription) => {
+        const next: SubscriptionStatus = subscription.status?.toLowerCase() === 'paused' ? 'active' : 'paused';
+        setSubscriptionStatus(subscription.id, next);
+    }, [setSubscriptionStatus]);
+
     return (
         <SafeAreaView className="flex-1 bg-background p-5">
             <View className="search-bar">
@@ -89,6 +149,28 @@ const Subscriptions = () => {
                         <Feather name="x" size={18} color={colors.mutedForeground} />
                     </Pressable>
                 )}
+            </View>
+
+            {/* Composes with search rather than replacing it - counts are
+                scoped to the current search matches, computed above. */}
+            <View className="category-scroll mb-4">
+                {STATUS_FILTERS.map(({ key, label }) => {
+                    const active = statusFilter === key;
+                    return (
+                        <Pressable
+                            key={key}
+                            className={`category-chip${active ? ' category-chip-active' : ''}`}
+                            onPress={() => setStatusFilter(key)}
+                            accessibilityRole="button"
+                            accessibilityLabel={`Show ${label.toLowerCase()} subscriptions`}
+                            accessibilityState={{ selected: active }}
+                        >
+                            <Text className={`category-chip-text${active ? ' category-chip-text-active' : ''}`}>
+                                {label} ({statusCounts[key]})
+                            </Text>
+                        </Pressable>
+                    );
+                })}
             </View>
 
             <FlatList
@@ -113,6 +195,8 @@ const Subscriptions = () => {
                             }}
                             onEditPress={() => openEdit(item)}
                             onCancelPress={() => confirmCancel(item)}
+                            onDeletePress={() => confirmDelete(item)}
+                            onPauseResumePress={() => togglePauseResume(item)}
                         />
                         {/* SubscriptionCard's own Pressable already toggles expand on
                             tap - this sits outside it as a distinct affordance to the
@@ -138,7 +222,7 @@ const Subscriptions = () => {
                 // softwareKeyboardLayoutMode to "resize", which already shrinks
                 // the window, so adding our own spacer would double-count it.
                 automaticallyAdjustKeyboardInsets
-                ListEmptyComponent={<Text className="home-empty-state">No subscriptions match your search.</Text>}
+                ListEmptyComponent={<Text className="home-empty-state">No subscriptions match your search and filters.</Text>}
                 contentContainerClassName="pb-30"
             />
 

@@ -139,4 +139,36 @@ describe('mutations', () => {
         expect(subscriptions).toHaveLength(before);
         expect(subscriptions.find((s) => s.id === 'bye')!.status).toBe('cancelled');
     });
+
+    // Delete is the one action in this store that actually removes a row -
+    // unlike cancel/pause/resume, which only ever rewrite `status`.
+    it('removes the record entirely on delete', () => {
+        const { useStore, icons } = loadStore();
+        useStore.getState().addSubscription(subscription(icons.plus, { id: 'gone' }));
+        const before = useStore.getState().subscriptions.length;
+
+        useStore.getState().deleteSubscription('gone');
+
+        const { subscriptions } = useStore.getState();
+        expect(subscriptions).toHaveLength(before - 1);
+        expect(subscriptions.find((s) => s.id === 'gone')).toBeUndefined();
+    });
+
+    it('sets status for pause and resume alike, keeping the record and list length', () => {
+        const { useStore, icons } = loadStore();
+        useStore.getState().addSubscription(subscription(icons.plus, { id: 'toggle', status: 'active' }));
+        const before = useStore.getState().subscriptions.length;
+
+        useStore.getState().setSubscriptionStatus('toggle', 'paused');
+
+        let { subscriptions } = useStore.getState();
+        expect(subscriptions).toHaveLength(before);
+        expect(subscriptions.find((s) => s.id === 'toggle')!.status).toBe('paused');
+
+        useStore.getState().setSubscriptionStatus('toggle', 'active');
+
+        subscriptions = useStore.getState().subscriptions;
+        expect(subscriptions).toHaveLength(before);
+        expect(subscriptions.find((s) => s.id === 'toggle')!.status).toBe('active');
+    });
 });

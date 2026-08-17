@@ -15,6 +15,12 @@ interface SubscriptionStore {
     addSubscription: (subscription: Subscription) => void;
     updateSubscription: (subscription: Subscription) => void;
     cancelSubscription: (id: string) => void;
+    // Destructive and unrecoverable - there is no undo, so callers must gate
+    // this behind their own confirmation (subscriptions.tsx does).
+    deleteSubscription: (id: string) => void;
+    // Shared by pause and resume: both are just a status write, so the UI
+    // decides which direction makes sense from the record's current status.
+    setSubscriptionStatus: (id: string, status: SubscriptionStatus) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -122,6 +128,20 @@ export const useSubscriptionStore = create<SubscriptionStore>()(
                     set((state) => ({
                         subscriptions: state.subscriptions.map((existing) =>
                             existing.id === id ? { ...existing, status: 'cancelled' } : existing
+                        ),
+                    })),
+
+                // Unlike cancel/pause/resume, this actually removes the row -
+                // it's the only action in this store that does.
+                deleteSubscription: (id) =>
+                    set((state) => ({
+                        subscriptions: state.subscriptions.filter((existing) => existing.id !== id),
+                    })),
+
+                setSubscriptionStatus: (id, status) =>
+                    set((state) => ({
+                        subscriptions: state.subscriptions.map((existing) =>
+                            existing.id === id ? { ...existing, status } : existing
                         ),
                     })),
             };

@@ -263,6 +263,17 @@
         @apply font-sans-bold text-primary;
     }
 
+    .sub-actions-secondary {
+        @apply mt-2 flex-row items-center gap-3;
+    }
+
+    /* Icon-only and outlined, deliberately smaller than .sub-cancel's filled
+       pill - Delete is the one irreversible action here and should not read
+       as more prominent than Cancel. */
+    .sub-delete {
+        @apply size-12 items-center justify-center rounded-full border border-destructive/30;
+    }
+
     .insights-scroll {
         @apply flex-1;
     }
