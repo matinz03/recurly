@@ -24,7 +24,7 @@ const SignIn = () => {
     const [password, setPassword] = useState('');
     const [code, setCode] = useState('');
     const [ssoStrategy, setSsoStrategy] = useState<string | null>(null);
-    const [ssoError, setSsoError] = useState<string | null>(null);
+    const [formError, setFormError] = useState<string | null>(null);
 
     // Validation states
     const [emailTouched, setEmailTouched] = useState(false);
@@ -38,13 +38,15 @@ const SignIn = () => {
     const handleSubmit = async () => {
         if (!formValid) return;
 
+        setFormError(null);
+
         const { error } = await signIn.password({
             emailAddress,
             password,
         });
 
         if (error) {
-            console.error(JSON.stringify(error, null, 2));
+            setFormError(error.message ?? 'Could not sign you in. Please try again.');
             return;
         }
 
@@ -82,7 +84,7 @@ const SignIn = () => {
     };
 
     const handleSSO = async (strategy: (typeof SSO_PROVIDERS)[number]['strategy']) => {
-        setSsoError(null);
+        setFormError(null);
         setSsoStrategy(strategy);
 
         try {
@@ -93,7 +95,7 @@ const SignIn = () => {
             }
         } catch (err) {
             console.error(JSON.stringify(err, null, 2));
-            setSsoError('Something went wrong. Please try again.');
+            setFormError('Something went wrong. Please try again.');
         } finally {
             setSsoStrategy(null);
         }
@@ -282,6 +284,11 @@ const SignIn = () => {
                                     )}
                                 </View>
 
+                                {formError && <Text className="auth-error">{formError}</Text>}
+                                {errors.global?.map((err, i) => (
+                                    <Text key={i} className="auth-error">{err.message}</Text>
+                                ))}
+
                                 <Pressable
                                     className={`auth-button ${(!formValid || fetchStatus === 'fetching') && 'auth-button-disabled'}`}
                                     onPress={handleSubmit}
@@ -298,8 +305,6 @@ const SignIn = () => {
                                     <Text className="auth-divider-text">Or continue with</Text>
                                     <View className="auth-divider-line" />
                                 </View>
-
-                                {ssoError && <Text className="auth-error">{ssoError}</Text>}
 
                                 <View className="flex-row gap-3">
                                     {SSO_PROVIDERS.map(({ strategy, icon, label }) => (

@@ -1,5 +1,5 @@
 import { View, Text, TextInput, Pressable, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
-import { Link, useRouter, type Href } from 'expo-router';
+import { Link } from 'expo-router';
 import { useSignUp, useAuth } from '@clerk/expo';
 import { useState } from 'react';
 import { SafeAreaView as RNSafeAreaView } from 'react-native-safe-area-context';
@@ -10,7 +10,6 @@ const SafeAreaView = styled(RNSafeAreaView);
 const SignUp = () => {
     const { signUp, errors, fetchStatus } = useSignUp();
     const { isSignedIn } = useAuth();
-    const router = useRouter();
 
     const [emailAddress, setEmailAddress] = useState('');
     const [password, setPassword] = useState('');
@@ -20,6 +19,11 @@ const SignUp = () => {
     const [emailTouched, setEmailTouched] = useState(false);
     const [passwordTouched, setPasswordTouched] = useState(false);
 
+    // Set once the email code has actually been sent, so the screen switch never
+    // depends on instance-specific resource state.
+    const [pendingVerification, setPendingVerification] = useState(false);
+    const [formError, setFormError] = useState<string | null>(null);
+
     // Client-side validation
     const emailValid = emailAddress.length === 0 || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailAddress);
     const passwordValid = password.length === 0 || password.length >= 8;
@@ -27,6 +31,7 @@ const SignUp = () => {
 
     const handleSubmit = async () => {
         if (!formValid) return;
+        setFormError(null);
 
         const { error } = await signUp.password({
             emailAddress,
@@ -34,39 +39,54 @@ const SignUp = () => {
         });
 
         if (error) {
-            console.error(JSON.stringify(error, null, 2));
+            setFormError(error.message ?? 'Could not create your account. Please try again.');
             return;
         }
 
-        // Send verification email
-        if (!error) {
-            await signUp.verifications.sendEmailCode();
+        // The sign-up can't complete if the Clerk instance requires fields this
+        // form doesn't collect. Say so instead of stalling with no feedback.
+        if (signUp.missingFields.length > 0) {
+            setFormError(
+                `This Clerk instance also requires: ${signUp.missingFields.join(', ')}.`
+            );
+            return;
         }
+
+        const { error: sendError } = await signUp.verifications.sendEmailCode();
+
+        if (sendError) {
+            setFormError(sendError.message ?? 'Could not send the verification code.');
+            return;
+        }
+
+        setPendingVerification(true);
     };
 
     const handleVerify = async () => {
-        await signUp.verifications.verifyEmailCode({
+        setFormError(null);
+
+        const { error } = await signUp.verifications.verifyEmailCode({
             code,
         });
 
-        if (signUp.status === 'complete') {
-            await signUp.finalize({
-                navigate: ({ session, decorateUrl }) => {
-                    if (session?.currentTask) {
-                        console.log(session?.currentTask);
-                        return;
-                    }
+        if (error) {
+            setFormError(error.message ?? 'That code was not accepted. Please try again.');
+            return;
+        }
 
-                    const url = decorateUrl('/(tabs)');
-                    if (url.startsWith('http')) {
-                        window.location.href = url;
-                    } else {
-                        router.replace(url as Href);
-                    }
-                },
-            });
-        } else {
-            console.error('Sign-up attempt not complete:', signUp);
+        // Activates the session; the (auth) layout redirects once isSignedIn flips.
+        const { error: finalizeError } = await signUp.finalize();
+
+        if (finalizeError) {
+            setFormError(finalizeError.message ?? 'Could not complete sign-up.');
+        }
+    };
+
+    const handleResend = async () => {
+        setFormError(null);
+        const { error } = await signUp.verifications.sendEmailCode();
+        if (error) {
+            setFormError(error.message ?? 'Could not resend the verification code.');
         }
     };
 
@@ -75,12 +95,8 @@ const SignUp = () => {
         return null;
     }
 
-    // Show verification screen if email needs verification
-    if (
-        signUp.status === 'missing_requirements' &&
-        signUp.unverifiedFields.includes('email_address') &&
-        signUp.missingFields.length === 0
-    ) {
+    // Show verification screen once the code has actually been sent
+    if (pendingVerification) {
         return (
             <SafeAreaView className="auth-safe-area">
                 <KeyboardAvoidingView
@@ -130,6 +146,11 @@ const SignUp = () => {
                                         )}
                                     </View>
 
+                                    {formError && <Text className="auth-error">{formError}</Text>}
+                                    {errors.global?.map((err, i) => (
+                                        <Text key={i} className="auth-error">{err.message}</Text>
+                                    ))}
+
                                     <Pressable
                                         className={`auth-button ${(!code || fetchStatus === 'fetching') && 'auth-button-disabled'}`}
                                         onPress={handleVerify}
@@ -142,7 +163,7 @@ const SignUp = () => {
 
                                     <Pressable
                                         className="auth-secondary-button"
-                                        onPress={() => signUp.verifications.sendEmailCode()}
+                                        onPress={handleResend}
                                         disabled={fetchStatus === 'fetching'}
                                     >
                                         <Text className="auth-secondary-button-text">Resend Code</Text>
@@ -232,6 +253,14 @@ const SignUp = () => {
                                         <Text className="auth-helper">Minimum 8 characters required</Text>
                                     )}
                                 </View>
+
+                                {formError && <Text className="auth-error">{formError}</Text>}
+                                {errors.fields.captcha && (
+                                    <Text className="auth-error">{errors.fields.captcha.message}</Text>
+                                )}
+                                {errors.global?.map((err, i) => (
+                                    <Text key={i} className="auth-error">{err.message}</Text>
+                                ))}
 
                                 <Pressable
                                     className={`auth-button ${(!formValid || fetchStatus === 'fetching') && 'auth-button-disabled'}`}
