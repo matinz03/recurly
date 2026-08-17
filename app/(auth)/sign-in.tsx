@@ -68,19 +68,27 @@ const SignIn = () => {
                 },
             });
         } else if (signIn.status === 'needs_second_factor') {
-            // Handle MFA if needed (not implemented in this basic flow)
-            console.log('MFA required');
+            // MFA isn't implemented in this flow, so say so rather than stalling.
+            setFormError('This account requires two-factor authentication, which is not supported yet.');
         } else if (signIn.status === 'needs_client_trust') {
-            // Send email code for client trust verification
-            const emailCodeFactor = signIn.supportedSecondFactors.find(
+            // Populated only once the first factor is verified, and the legacy
+            // resource types it as nullable - so don't assume an array.
+            const emailCodeFactor = signIn.supportedSecondFactors?.find(
                 (factor) => factor.strategy === 'email_code'
             );
 
-            if (emailCodeFactor) {
-                await signIn.mfa.sendEmailCode();
+            if (!emailCodeFactor) {
+                setFormError('Could not verify this device. Please try again.');
+                return;
+            }
+
+            const { error: sendError } = await signIn.mfa.sendEmailCode();
+
+            if (sendError) {
+                setFormError(sendError.message ?? 'Could not send the verification code.');
             }
         } else {
-            console.error('Sign-in attempt not complete:', signIn);
+            setFormError('Could not complete sign-in. Please try again.');
         }
     };
 
@@ -89,10 +97,13 @@ const SignIn = () => {
         setSsoStrategy(strategy);
 
         try {
-            const { createdSessionId, setActive } = await startSSOFlow({ strategy });
+            const { createdSessionId, setActive, authSessionResult } = await startSSOFlow({ strategy });
 
             if (createdSessionId && setActive) {
                 await setActive({ session: createdSessionId });
+            } else if (authSessionResult?.type !== 'cancel' && authSessionResult?.type !== 'dismiss') {
+                // No session and the user didn't back out, so the flow genuinely failed.
+                setFormError('Could not complete sign-in with that provider. Please try again.');
             }
         } catch (err) {
             console.error(JSON.stringify(err, null, 2));
@@ -103,7 +114,14 @@ const SignIn = () => {
     };
 
     const handleVerify = async () => {
-        await signIn.mfa.verifyEmailCode({ code });
+        setFormError(null);
+
+        const { error } = await signIn.mfa.verifyEmailCode({ code });
+
+        if (error) {
+            setFormError(error.message ?? 'That code was not accepted. Please try again.');
+            return;
+        }
 
         if (signIn.status === 'complete') {
             await signIn.finalize({
@@ -122,7 +140,15 @@ const SignIn = () => {
                 },
             });
         } else {
-            console.error('Sign-in attempt not complete:', signIn);
+            setFormError('Could not complete sign-in. Please try again.');
+        }
+    };
+
+    const handleResend = async () => {
+        setFormError(null);
+        const { error } = await signIn.mfa.sendEmailCode();
+        if (error) {
+            setFormError(error.message ?? 'Could not resend the verification code.');
         }
     };
 
@@ -177,6 +203,11 @@ const SignIn = () => {
                                         )}
                                     </View>
 
+                                    {formError && <Text className="auth-error">{formError}</Text>}
+                                    {errors.global?.map((err, i) => (
+                                        <Text key={i} className="auth-error">{err.message}</Text>
+                                    ))}
+
                                     <Pressable
                                         className={clsx('auth-button', (!code || fetchStatus === 'fetching') && 'auth-button-disabled')}
                                         onPress={handleVerify}
@@ -189,7 +220,7 @@ const SignIn = () => {
 
                                     <Pressable
                                         className="auth-secondary-button"
-                                        onPress={() => signIn.mfa.sendEmailCode()}
+                                        onPress={handleResend}
                                         disabled={fetchStatus === 'fetching'}
                                     >
                                         <Text className="auth-secondary-button-text">Resend Code</Text>
