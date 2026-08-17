@@ -4,6 +4,7 @@ import { useSignUp, useAuth } from '@clerk/expo';
 import { useState } from 'react';
 import { SafeAreaView as RNSafeAreaView } from 'react-native-safe-area-context';
 import { styled } from 'nativewind';
+import clsx from 'clsx';
 
 const SafeAreaView = styled(RNSafeAreaView);
 
@@ -152,7 +153,7 @@ const SignUp = () => {
                                     ))}
 
                                     <Pressable
-                                        className={`auth-button ${(!code || fetchStatus === 'fetching') && 'auth-button-disabled'}`}
+                                        className={clsx('auth-button', (!code || fetchStatus === 'fetching') && 'auth-button-disabled')}
                                         onPress={handleVerify}
                                         disabled={!code || fetchStatus === 'fetching'}
                                     >
@@ -213,7 +214,7 @@ const SignUp = () => {
                                 <View className="auth-field">
                                     <Text className="auth-label">Email Address</Text>
                                     <TextInput
-                                        className={`auth-input ${emailTouched && !emailValid && 'auth-input-error'}`}
+                                        className={clsx('auth-input', emailTouched && !emailValid && 'auth-input-error')}
                                         autoCapitalize="none"
                                         value={emailAddress}
                                         placeholder="name@example.com"
@@ -234,7 +235,7 @@ const SignUp = () => {
                                 <View className="auth-field">
                                     <Text className="auth-label">Password</Text>
                                     <TextInput
-                                        className={`auth-input ${passwordTouched && !passwordValid && 'auth-input-error'}`}
+                                        className={clsx('auth-input', passwordTouched && !passwordValid && 'auth-input-error')}
                                         value={password}
                                         placeholder="Create a strong password"
                                         placeholderTextColor="rgba(0, 0, 0, 0.4)"
@@ -263,7 +264,7 @@ const SignUp = () => {
                                 ))}
 
                                 <Pressable
-                                    className={`auth-button ${(!formValid || fetchStatus === 'fetching') && 'auth-button-disabled'}`}
+                                    className={clsx('auth-button', (!formValid || fetchStatus === 'fetching') && 'auth-button-disabled')}
                                     onPress={handleSubmit}
                                     disabled={!formValid || fetchStatus === 'fetching'}
                                 >
