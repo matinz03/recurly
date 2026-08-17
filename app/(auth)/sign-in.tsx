@@ -1,4 +1,4 @@
-import { View, Text, TextInput, Pressable, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, TextInput, Pressable, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { Link, useRouter, type Href } from 'expo-router';
 import { useSignIn, useSSO } from '@clerk/expo';
 import { useState } from 'react';
@@ -347,12 +347,20 @@ const SignIn = () => {
                                     {SSO_PROVIDERS.map(({ strategy, icon, label }) => (
                                         <Pressable
                                             key={strategy}
-                                            className="flex-1 items-center justify-center rounded-2xl border border-border bg-background py-4"
+                                            className={clsx(
+                                                'flex-1 items-center justify-center rounded-2xl border border-border bg-background py-4',
+                                                ssoStrategy !== null && ssoStrategy !== strategy && 'opacity-40'
+                                            )}
                                             onPress={() => handleSSO(strategy)}
                                             disabled={ssoStrategy !== null}
                                             accessibilityLabel={`Continue with ${label}`}
+                                            accessibilityState={{ disabled: ssoStrategy !== null, busy: ssoStrategy === strategy }}
                                         >
-                                            <AntDesign name={icon} size={22} color={colors.primary} />
+                                            {ssoStrategy === strategy ? (
+                                                <ActivityIndicator color={colors.primary} />
+                                            ) : (
+                                                <AntDesign name={icon} size={22} color={colors.primary} />
+                                            )}
                                         </Pressable>
                                     ))}
                                 </View>
