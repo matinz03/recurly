@@ -43,15 +43,14 @@ const SignIn = () => {
 
         setFormError(null);
 
+        // Clerk surfaces failures through errors.fields / errors.global, which the
+        // form renders - don't echo error.message here or it shows up twice.
         const { error } = await signIn.password({
             emailAddress,
             password,
         });
 
-        if (error) {
-            setFormError(error.message ?? 'Could not sign you in. Please try again.');
-            return;
-        }
+        if (error) return;
 
         if (signIn.status === 'complete') {
             await signIn.finalize({
@@ -86,11 +85,7 @@ const SignIn = () => {
                 return;
             }
 
-            const { error: sendError } = await signIn.mfa.sendEmailCode();
-
-            if (sendError) {
-                setFormError(sendError.message ?? 'Could not send the verification code.');
-            }
+            await signIn.mfa.sendEmailCode();
         } else {
             setFormError('Could not complete sign-in. Please try again.');
         }
@@ -132,10 +127,7 @@ const SignIn = () => {
 
         const { error } = await signIn.mfa.verifyEmailCode({ code });
 
-        if (error) {
-            setFormError(error.message ?? 'That code was not accepted. Please try again.');
-            return;
-        }
+        if (error) return;
 
         if (signIn.status === 'complete') {
             await signIn.finalize({
@@ -162,10 +154,7 @@ const SignIn = () => {
 
     const handleResend = async () => {
         setFormError(null);
-        const { error } = await signIn.mfa.sendEmailCode();
-        if (error) {
-            setFormError(error.message ?? 'Could not resend the verification code.');
-        }
+        await signIn.mfa.sendEmailCode();
     };
 
     // Show verification screen if client trust is needed
