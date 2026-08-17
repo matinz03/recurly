@@ -3,14 +3,30 @@ import { SafeAreaView as RNSafeAreaView } from "react-native-safe-area-context";
 import { styled } from "nativewind";
 import { useClerk, useUser } from '@clerk/expo';
 import images from '@/constants/images';
+import { useState } from 'react';
+import clsx from 'clsx';
 const SafeAreaView = styled(RNSafeAreaView);
 
 const Settings = () => {
     const { signOut } = useClerk();
     const { user } = useUser();
 
+    const [isSigningOut, setIsSigningOut] = useState(false);
+    const [signOutError, setSignOutError] = useState<string | null>(null);
+
     const handleSignOut = async () => {
-        await signOut();
+        if (isSigningOut) return;
+
+        setSignOutError(null);
+        setIsSigningOut(true);
+
+        try {
+            await signOut();
+        } catch {
+            setSignOutError('Could not sign out. Please try again.');
+        } finally {
+            setIsSigningOut(false);
+        }
     };
 
     const displayName = user?.firstName || user?.fullName || user?.emailAddresses[0]?.emailAddress || 'User';
@@ -56,11 +72,15 @@ const Settings = () => {
             </View>
 
             {/* Sign Out Button */}
+            {signOutError && <Text className="auth-error mb-2">{signOutError}</Text>}
             <Pressable
-                className="auth-button bg-destructive"
+                className={clsx('auth-button bg-destructive', isSigningOut && 'auth-button-disabled')}
                 onPress={handleSignOut}
+                disabled={isSigningOut}
             >
-                <Text className="auth-button-text text-white">Sign Out</Text>
+                <Text className="auth-button-text text-white">
+                    {isSigningOut ? 'Signing Out...' : 'Sign Out'}
+                </Text>
             </Pressable>
         </SafeAreaView>
     )

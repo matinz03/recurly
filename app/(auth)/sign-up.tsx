@@ -83,6 +83,15 @@ const SignUp = () => {
         await signUp.verifications.sendEmailCode();
     };
 
+    // Without this the verification screen is a dead end - a mistyped email
+    // address leaves no way back to the form.
+    const handleStartOver = async () => {
+        setFormError(null);
+        setCode('');
+        setPendingVerification(false);
+        await signUp.reset();
+    };
+
     // Don't show anything if already signed in or sign-up is complete
     if (signUp.status === 'complete' || isSignedIn) {
         return null;
@@ -160,6 +169,14 @@ const SignUp = () => {
                                         disabled={fetchStatus === 'fetching'}
                                     >
                                         <Text className="auth-secondary-button-text">Resend Code</Text>
+                                    </Pressable>
+
+                                    <Pressable
+                                        className="auth-secondary-button"
+                                        onPress={handleStartOver}
+                                        disabled={fetchStatus === 'fetching'}
+                                    >
+                                        <Text className="auth-secondary-button-text">Start Over</Text>
                                     </Pressable>
                                 </View>
                             </View>
