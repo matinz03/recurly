@@ -9,7 +9,7 @@ export default function SSOCallback() {
 
     useEffect(() => {
         if (isLoaded && isSignedIn) {
-            router.replace('/index');
+            router.replace('/');
         }
     }, [isLoaded, isSignedIn, router]);
 
