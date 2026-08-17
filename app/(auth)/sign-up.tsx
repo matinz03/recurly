@@ -4,6 +4,7 @@ import { useSignUp, useAuth } from '@clerk/expo';
 import { useState } from 'react';
 import { SafeAreaView as RNSafeAreaView } from 'react-native-safe-area-context';
 import { styled } from 'nativewind';
+import { posthog } from '@/lib/posthog';
 import clsx from 'clsx';
 
 const SafeAreaView = styled(RNSafeAreaView);
@@ -76,6 +77,7 @@ const SignUp = () => {
 
         // Activates the session; the (auth) layout redirects once isSignedIn flips.
         await signUp.finalize();
+        posthog?.capture('sign_up_completed', { method: 'email_code' });
     };
 
     const handleResend = async () => {

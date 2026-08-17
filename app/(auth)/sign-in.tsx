@@ -7,6 +7,7 @@ import { styled } from 'nativewind';
 import * as Linking from 'expo-linking';
 import { AntDesign } from '@expo/vector-icons';
 import { colors } from '@/constants/theme';
+import { posthog } from '@/lib/posthog';
 import clsx from 'clsx';
 
 const SafeAreaView = styled(RNSafeAreaView);
@@ -69,6 +70,7 @@ const SignIn = () => {
                     }
                 },
             });
+            posthog?.capture('sign_in_completed', { method: 'password' });
         } else if (signIn.status === 'needs_second_factor') {
             // MFA isn't implemented in this flow, so say so rather than stalling.
             setFormError('This account requires two-factor authentication, which is not supported yet.');
@@ -104,6 +106,7 @@ const SignIn = () => {
 
             if (createdSessionId && setActive) {
                 await setActive({ session: createdSessionId });
+                posthog?.capture('sign_in_completed', { method: 'sso' });
             } else if (authSessionResult?.type !== 'cancel' && authSessionResult?.type !== 'dismiss') {
                 // A first-time SSO user is transferred into signUp.create({ transfer: true }).
                 // That can't complete if the instance requires fields the provider doesn't
@@ -151,6 +154,7 @@ const SignIn = () => {
                     }
                 },
             });
+            posthog?.capture('sign_in_completed', { method: 'email_code' });
         } else {
             setFormError('Could not complete sign-in. Please try again.');
         }
