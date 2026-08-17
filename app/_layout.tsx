@@ -15,7 +15,7 @@ if (!publishableKey) {
 }
 
 function RootLayoutContent() {
-  const [fontsLoaded] = useFonts({
+  const [fontsLoaded, fontError] = useFonts({
     "sans-regular": require("../assets/fonts/PlusJakartaSans-Regular.ttf"),
     "sans-bold": require("../assets/fonts/PlusJakartaSans-Bold.ttf"),
     "sans-medium": require("../assets/fonts/PlusJakartaSans-Medium.ttf"),
@@ -23,15 +23,16 @@ function RootLayoutContent() {
     "sans-extrabold": require("../assets/fonts/PlusJakartaSans-ExtraBold.ttf"),
     "sans-light": require("../assets/fonts/PlusJakartaSans-Light.ttf"),
   });
-  const {isLoaded:authLoaded} = useAuth();
+  const { isLoaded: authLoaded } = useAuth();
+  const fontsReady = fontsLoaded || !!fontError;
 
   useEffect(() => {
-    if (fontsLoaded&&authLoaded) {
-      SplashScreen.hideAsync();
+    if (fontsReady && authLoaded) {
+      SplashScreen.hideAsync().catch(() => {});
     }
-  }, [fontsLoaded, authLoaded]);
+  }, [fontsReady, authLoaded]);
 
-  if (!fontsLoaded || !authLoaded) return null;
+  if (!fontsReady || !authLoaded) return null;
   return (
     <Stack screenOptions={{ headerShown: false }} />
   );
