@@ -24,9 +24,37 @@ const SubscriptionCard = ({ name, price, currency, icon, billing, color, categor
     const fixedInkStyle = onFixedColor ? { color: colors.primary } : undefined;
     const fixedMutedStyle = onFixedColor ? { color: colors.mutedForeground } : undefined;
 
+    const metaText = category?.trim() || plan?.trim() || (renewalDate ? formatSubscriptionDateTime(renewalDate) : '');
+
+    // Composed once so the head row reads as one item (name, price, cadence,
+    // meta) instead of four disconnected fragments - see the accessible
+    // wrapper below.
+    const headLabel = [name, `${formatCurrency(price, currency)}, ${billing}`, metaText]
+        .filter(Boolean)
+        .join(', ');
+
     return (
-        <Pressable onPress={onPress} className={clsx('sub-card', expanded ? 'sub-card-expanded' : 'bg-card')} style={!expanded && color ? { backgroundColor: color } : undefined}>
-            <View className="sub-head">
+        <View className={clsx('sub-card', expanded ? 'sub-card-expanded' : 'bg-card')} style={!expanded && color ? { backgroundColor: color } : undefined}>
+            {/* The expand/collapse toggle now lives on the head row alone, not
+                the whole card: `accessible` on a wrapper collapses its
+                descendants into one node, so putting it on the outer
+                container (as before) would have swallowed the nested Edit /
+                Pause / Cancel / Delete buttons below and made them
+                unreachable to a screen reader. Scoping it to just the head
+                also composes cleanly with `accessibilityState.expanded`,
+                which announces the toggle's current state. */}
+            <Pressable
+                onPress={onPress}
+                className="sub-head"
+                // Reclaims .sub-card's 16px padding, which stopped being
+                // tappable when the toggle moved off the outer container. Not
+                // extended downward while expanded, or it would steal taps
+                // from the top of the details block.
+                hitSlop={{ top: 16, left: 16, right: 16, bottom: expanded ? 0 : 16 }}
+                accessibilityRole="button"
+                accessibilityState={{ expanded }}
+                accessibilityLabel={headLabel}
+            >
                 <View className="sub-main">
                     <SubscriptionIcon icon={icon} className="sub-icon" />
                     <View className="sub-copy">
@@ -34,7 +62,7 @@ const SubscriptionCard = ({ name, price, currency, icon, billing, color, categor
                             {name}
                         </Text>
                         <Text numberOfLines={1} ellipsizeMode="tail" className="sub-meta" style={fixedMutedStyle}>
-                            {category?.trim() || plan?.trim() || (renewalDate ? formatSubscriptionDateTime(renewalDate) : '')}
+                            {metaText}
                         </Text>
                     </View>
                 </View>
@@ -43,7 +71,7 @@ const SubscriptionCard = ({ name, price, currency, icon, billing, color, categor
                     <Text className="sub-price" style={fixedInkStyle}>{formatCurrency(price, currency)}</Text>
                     <Text className="sub-billing" style={fixedMutedStyle}>{billing}</Text>
                 </View>
-            </View>
+            </Pressable>
 
             {expanded && (
                 <View className="sub-body">
@@ -90,7 +118,7 @@ const SubscriptionCard = ({ name, price, currency, icon, billing, color, categor
                     {(onEditPress || showPauseResume) && (
                         <View className="sub-actions">
                             {onEditPress && (
-                                <Pressable className="sub-action" onPress={onEditPress} accessibilityLabel={`Edit ${name}`}>
+                                <Pressable className="sub-action" onPress={onEditPress} accessibilityRole="button" accessibilityLabel={`Edit ${name}`}>
                                     <Text className="sub-action-text">Edit</Text>
                                 </Pressable>
                             )}
@@ -98,6 +126,7 @@ const SubscriptionCard = ({ name, price, currency, icon, billing, color, categor
                                 <Pressable
                                     className="sub-action"
                                     onPress={onPauseResumePress}
+                                    accessibilityRole="button"
                                     accessibilityLabel={`${isPaused ? 'Resume' : 'Pause'} ${name}`}
                                 >
                                     <Text className="sub-action-text">{isPaused ? 'Resume' : 'Pause'}</Text>
@@ -113,14 +142,25 @@ const SubscriptionCard = ({ name, price, currency, icon, billing, color, categor
                                     className={clsx('sub-cancel flex-1', isCancelled && 'sub-cancel-disabled')}
                                     onPress={onCancelPress}
                                     disabled={isCancelled}
+                                    accessibilityRole="button"
                                     accessibilityLabel={`Cancel ${name}`}
                                     accessibilityState={{ disabled: isCancelled }}
                                 >
-                                    <Text className="sub-cancel-text">{isCancelled ? 'Cancelled' : 'Cancel'}</Text>
+                                    {/* `sub-cancel-text` is `text-background`, which is fine on
+                                        the solid `bg-primary` active fill but drops to ~3.5:1 in
+                                        light mode against the disabled state's `bg-primary/35`
+                                        blend (checked against the card's actual backdrop) - below
+                                        AA for text. The static `colors.primary` ink (not the
+                                        theme-reactive one, which goes light in dark mode and would
+                                        fail the same check the other way) holds ~5:1 against that
+                                        blend in both themes without touching the palette. */}
+                                    <Text className="sub-cancel-text" style={isCancelled ? { color: colors.primary } : undefined}>
+                                        {isCancelled ? 'Cancelled' : 'Cancel'}
+                                    </Text>
                                 </Pressable>
                             )}
                             {onDeletePress && (
-                                <Pressable className="sub-delete" onPress={onDeletePress} accessibilityLabel={`Delete ${name}`}>
+                                <Pressable className="sub-delete" onPress={onDeletePress} accessibilityRole="button" accessibilityLabel={`Delete ${name}`}>
                                     <Feather name="trash-2" size={18} color={themeColors.destructive} />
                                 </Pressable>
                             )}
@@ -128,7 +168,7 @@ const SubscriptionCard = ({ name, price, currency, icon, billing, color, categor
                     )}
                 </View>
             )}
-        </Pressable>
+        </View>
     )
 }
 export default SubscriptionCard

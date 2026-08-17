@@ -220,7 +220,16 @@ const CreateSubscriptionModal = ({ visible, onClose, onSubmit, subscription, exi
                             </View>
                             <View className="modal-header">
                                 <Text className="modal-title">{isEditing ? 'Edit Subscription' : 'New Subscription'}</Text>
-                                <Pressable className="modal-close" onPress={handleClose} accessibilityLabel="Close">
+                                <Pressable
+                                    className="modal-close"
+                                    onPress={handleClose}
+                                    accessibilityRole="button"
+                                    accessibilityLabel="Close"
+                                    // `.modal-close` is a fixed 32pt circle - under the 44pt
+                                    // minimum. Growing the chip would crowd the header next to
+                                    // the title, so extend the tap target instead.
+                                    hitSlop={6}
+                                >
                                     <Text className="modal-close-text">✕</Text>
                                 </Pressable>
                             </View>
@@ -266,12 +275,15 @@ const CreateSubscriptionModal = ({ visible, onClose, onSubmit, subscription, exi
 
                             <View className="auth-field">
                                 <Text className="auth-label">Frequency</Text>
-                                <View className="picker-row">
+                                <View className="picker-row" accessibilityRole="radiogroup">
                                     {FREQUENCIES.map((option) => (
                                         <Pressable
                                             key={option}
                                             className={clsx('picker-option', frequency === option && 'picker-option-active')}
                                             onPress={() => setFrequency(option)}
+                                            accessibilityRole="radio"
+                                            accessibilityLabel={option}
+                                            accessibilityState={{ selected: frequency === option }}
                                         >
                                             <Text className={clsx('picker-option-text', frequency === option && 'picker-option-text-active')}>
                                                 {option}
@@ -283,12 +295,15 @@ const CreateSubscriptionModal = ({ visible, onClose, onSubmit, subscription, exi
 
                             <View className="auth-field">
                                 <Text className="auth-label">Currency</Text>
-                                <View className="picker-row">
+                                <View className="picker-row" accessibilityRole="radiogroup">
                                     {CURRENCIES.map((option) => (
                                         <Pressable
                                             key={option}
                                             className={clsx('picker-option', currency === option && 'picker-option-active')}
                                             onPress={() => setCurrency(option)}
+                                            accessibilityRole="radio"
+                                            accessibilityLabel={option}
+                                            accessibilityState={{ selected: currency === option }}
                                         >
                                             <Text className={clsx('picker-option-text', currency === option && 'picker-option-text-active')}>
                                                 {option}
@@ -325,12 +340,21 @@ const CreateSubscriptionModal = ({ visible, onClose, onSubmit, subscription, exi
 
                             <View className="auth-field">
                                 <Text className="auth-label">Category</Text>
-                                <View className="category-scroll">
+                                <View className="category-scroll" accessibilityRole="radiogroup">
                                     {CATEGORIES.map((cat) => (
                                         <Pressable
                                             key={cat}
                                             className={clsx('category-chip', category === cat && 'category-chip-active')}
                                             onPress={() => setCategory(cat)}
+                                            accessibilityRole="radio"
+                                            accessibilityLabel={cat}
+                                            accessibilityState={{ selected: category === cat }}
+                                            // `.category-chip` is ~36pt tall (px-4 py-2 around
+                                            // text-sm) - under the 44pt minimum. The chips sit in a
+                                            // flex-wrap row with an 8px gap, so 4pt of hitSlop per
+                                            // side extends the tap target right up to (not past)
+                                            // the neighbouring chip's own hitSlop.
+                                            hitSlop={{ top: 4, bottom: 4 }}
                                         >
                                             <Text className={clsx('category-chip-text', category === cat && 'category-chip-text-active')}>
                                                 {cat}

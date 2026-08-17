@@ -30,7 +30,15 @@ const AddSubscriptionButton = ({ onPress }: AddSubscriptionButtonProps) => {
             accessibilityRole="button"
             accessibilityLabel="Add subscription"
         >
-            <Image source={icons.add} className="fab-glyph" />
+            {/* The Pressable's own accessibilityLabel already says "Add
+                subscription" - without this the plain-icon Image would also
+                be announced as a second, unlabeled image. */}
+            <Image
+                source={icons.add}
+                className="fab-glyph"
+                accessibilityElementsHidden
+                importantForAccessibility="no-hide-descendants"
+            />
         </Pressable>
     );
 };

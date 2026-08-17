@@ -22,6 +22,10 @@ type StatusFilter = 'all' | SubscriptionStatus;
 /** Stable reference so the hydration fallback can't bust useMemo deps. */
 const NO_SUBSCRIPTIONS: Subscription[] = [];
 
+/** Off-screen, not display:none - display:none would drop it from the
+    accessibility tree entirely, defeating the live region below. */
+const SR_ONLY = { position: 'absolute' as const, top: -9999, left: -9999, width: 1, height: 1, opacity: 0 };
+
 const STATUS_FILTERS: { key: StatusFilter; label: string }[] = [
     { key: 'all', label: 'All' },
     { key: 'active', label: 'Active' },
@@ -163,10 +167,30 @@ const Subscriptions = () => {
         setSubscriptionStatus(subscription.id, next);
     }, [setSubscriptionStatus]);
 
+    // Visually hidden - narrating the list changing under the search box and
+    // the hydration spinner resolving into real content, neither of which is
+    // a navigation event a screen reader would otherwise notice. Android's
+    // TalkBack announces the new text whenever it changes; iOS VoiceOver
+    // largely ignores accessibilityLiveRegion, so this is a partial fix - see
+    // the accessibility-pass report.
+    const liveStatus = !hasHydrated
+        ? 'Loading your subscriptions'
+        : `${visibleSubscriptions.length} ${visibleSubscriptions.length === 1 ? 'subscription' : 'subscriptions'} shown`;
+
     return (
         <SafeAreaView className="flex-1 bg-background p-5">
+            <Text accessibilityLiveRegion="polite" style={SR_ONLY}>{liveStatus}</Text>
+
             <View className="search-bar">
-                <Feather name="search" size={18} color={colors.mutedForeground} />
+                {/* Decorative - the TextInput's own placeholder already says
+                    what the field is for. */}
+                <Feather
+                    name="search"
+                    size={18}
+                    color={colors.mutedForeground}
+                    accessibilityElementsHidden
+                    importantForAccessibility="no-hide-descendants"
+                />
                 <TextInput
                     className="search-input"
                     value={query}
@@ -178,7 +202,15 @@ const Subscriptions = () => {
                     returnKeyType="search"
                 />
                 {query.length > 0 && (
-                    <Pressable onPress={() => setQuery('')} accessibilityLabel="Clear search">
+                    <Pressable
+                        onPress={() => setQuery('')}
+                        accessibilityRole="button"
+                        accessibilityLabel="Clear search"
+                        // The icon alone renders at ~18x18 - well under the 44pt
+                        // minimum. Growing it visually would look oversized next to
+                        // the input, so extend the tap target with hitSlop instead.
+                        hitSlop={13}
+                    >
                         <Feather name="x" size={18} color={colors.mutedForeground} />
                     </Pressable>
                 )}
@@ -186,7 +218,7 @@ const Subscriptions = () => {
 
             {/* Composes with search rather than replacing it - counts are
                 scoped to the current search matches, computed above. */}
-            <View className="category-scroll mb-4">
+            <View className="category-scroll mb-4" accessibilityRole="radiogroup">
                 {STATUS_FILTERS.map(({ key, label }) => {
                     const active = statusFilter === key;
                     return (
@@ -194,9 +226,14 @@ const Subscriptions = () => {
                             key={key}
                             className={`category-chip${active ? ' category-chip-active' : ''}`}
                             onPress={() => setStatusFilter(key)}
-                            accessibilityRole="button"
+                            accessibilityRole="radio"
                             accessibilityLabel={`Show ${label.toLowerCase()} subscriptions`}
                             accessibilityState={{ selected: active }}
+                            // `.category-chip` is ~36pt tall - under the 44pt minimum.
+                            // Chips sit in a flex-wrap row with an 8px gap, so 4pt of
+                            // hitSlop per side reaches 44pt without overlapping the
+                            // neighbouring chip's own hitSlop.
+                            hitSlop={{ top: 4, bottom: 4 }}
                         >
                             <Text className={`category-chip-text${active ? ' category-chip-text-active' : ''}`}>
                                 {label} ({statusCounts[key]})
@@ -239,6 +276,11 @@ const Subscriptions = () => {
                             onPress={() => router.push({ pathname: '/subscriptions/[id]', params: { id: item.id } })}
                             accessibilityRole="button"
                             accessibilityLabel={`View details for ${item.name}`}
+                            // No vertical padding on `.detail-link-row` - content is
+                            // only ~20pt tall, under the 44pt minimum. hitSlop instead
+                            // of adding padding, which would push the row away from
+                            // the card it's paired with.
+                            hitSlop={{ top: 12, bottom: 12 }}
                         >
                             <Text className="detail-link-text">Details</Text>
                             <Feather name="chevron-right" size={16} color={colors.accent} />

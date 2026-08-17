@@ -372,7 +372,10 @@ const SignIn = () => {
                         <View className="auth-link-row">
                             <Text className="auth-link-copy">Don&apos;t have an account?</Text>
                             <Link href="/(auth)/sign-up" asChild>
-                                <Pressable>
+                                {/* `.auth-link` is just the text's own line height (~20pt) with
+                                    no padding - under the 44pt minimum. hitSlop instead of
+                                    padding, which would misalign it from the copy beside it. */}
+                                <Pressable hitSlop={{ top: 12, bottom: 12 }}>
                                     <Text className="auth-link">Create Account</Text>
                                 </Pressable>
                             </Link>

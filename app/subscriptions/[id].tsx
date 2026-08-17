@@ -12,6 +12,10 @@ import { daysUntil, formatCurrency, formatStatusLabel, formatSubscriptionDateTim
 
 const SafeAreaView = styled(RNSafeAreaView);
 
+/** Off-screen, not display:none - display:none would drop it from the
+    accessibility tree entirely, defeating the live region below. */
+const SR_ONLY = { position: 'absolute' as const, top: -9999, left: -9999, width: 1, height: 1, opacity: 0 };
+
 const SubscriptionDetails = () => {
     const { id } = useLocalSearchParams<{ id: string }>();
     const router = useRouter();
@@ -36,8 +40,30 @@ const SubscriptionDetails = () => {
 
     return (
         <SafeAreaView className="flex-1 bg-background">
+            {/* Visually hidden - the hydration spinner resolving (or the record
+                turning out to be missing) isn't a navigation event, so nothing
+                would otherwise tell a screen reader the wait is over. Android's
+                TalkBack announces the new text; iOS VoiceOver largely ignores
+                accessibilityLiveRegion, so this is a partial fix. */}
+            <Text accessibilityLiveRegion="polite" style={SR_ONLY}>
+                {!hasHydrated
+                    ? 'Loading subscription details'
+                    : subscription
+                      ? 'Subscription details loaded'
+                      : 'Subscription not found'}
+            </Text>
+
             <View className="detail-header">
-                <Pressable className="detail-back" onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Go back">
+                <Pressable
+                    className="detail-back"
+                    onPress={() => router.back()}
+                    accessibilityRole="button"
+                    accessibilityLabel="Go back"
+                    // `.detail-back` is a fixed 40pt circle - just under the 44pt
+                    // minimum. hitSlop closes the gap without changing the header's
+                    // visual sizing.
+                    hitSlop={2}
+                >
                     <Image source={icons.back} className="detail-back-icon" resizeMode="contain" />
                 </Pressable>
                 <Text className="detail-header-title">Details</Text>

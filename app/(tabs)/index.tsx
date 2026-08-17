@@ -26,6 +26,10 @@ const UPCOMING_LIMIT = 5;
 /** Stable reference so the hydration fallback can't bust useMemo deps. */
 const NO_SUBSCRIPTIONS: Subscription[] = [];
 
+/** Off-screen, not display:none - display:none would drop it from the
+    accessibility tree entirely, defeating the live region below. */
+const SR_ONLY = { position: 'absolute' as const, top: -9999, left: -9999, width: 1, height: 1, opacity: 0 };
+
 export default function App() {
     const { user } = useUser();
     const router = useRouter();
@@ -75,6 +79,15 @@ export default function App() {
 
     return (
         <SafeAreaView className="flex-1 bg-background p-5">
+                {/* Visually hidden - the hydration spinner resolving into real
+                    content isn't a navigation event, so nothing would otherwise
+                    tell a screen reader the wait is over. Android's TalkBack
+                    announces the new text; iOS VoiceOver largely ignores
+                    accessibilityLiveRegion, so this is a partial fix. */}
+                <Text accessibilityLiveRegion="polite" style={SR_ONLY}>
+                    {hasHydrated ? 'Subscriptions loaded' : 'Loading your subscriptions'}
+                </Text>
+
                 <FlatList
                     // An element, not a function: a new function identity each
                     // render would remount the whole header and reset the

@@ -20,7 +20,11 @@ const EmptySubscriptions = ({ onAddPress }: EmptySubscriptionsProps) => {
     const colors = useThemeColors();
     return (
         <View className="empty-subs">
-            <View className="empty-subs-icon-wrap">
+            {/* Standalone illustration, not inside any labelled control - the
+                title/copy below already say everything a screen reader
+                needs, so hide it rather than have it announced as a bare,
+                unlabeled image. */}
+            <View className="empty-subs-icon-wrap" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
                 <Image source={icons.wallet} className="empty-subs-icon" />
             </View>
 

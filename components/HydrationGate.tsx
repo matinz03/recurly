@@ -12,8 +12,12 @@ import { useThemeColors } from '@/constants/theme';
 const HydrationGate = () => {
     const colors = useThemeColors();
     return (
-        <View className="hydration-gate">
-            <ActivityIndicator color={colors.accent} />
+        // The live-region text each screen renders alongside this already
+        // announces "Loading..." once, so this only needs a label for anyone
+        // who focuses it directly - the ActivityIndicator itself is
+        // decorative and would otherwise read as an unlabeled spinner.
+        <View className="hydration-gate" accessibilityRole="progressbar" accessibilityLabel="Loading">
+            <ActivityIndicator color={colors.accent} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" />
         </View>
     );
 };
