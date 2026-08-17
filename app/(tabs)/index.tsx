@@ -15,6 +15,7 @@ import EmptySubscriptions from "@/components/EmptySubscriptions";
 import {useMemo, useState} from "react";
 import { useRouter } from "expo-router";
 import { useUser } from '@clerk/expo';
+import { notifySuccess } from "@/lib/haptics";
 import { useSubscriptionStore } from "@/lib/subscriptionStore";
 import { useExpandedSubscription } from "@/lib/useExpandedSubscription";
 const SafeAreaView = styled(RNSafeAreaView);
@@ -155,7 +156,7 @@ export default function App() {
                     visible={isCreateModalVisible}
                     existingSubscriptions={subscriptions}
                     onClose={() => setIsCreateModalVisible(false)}
-                    onSubmit={addSubscription}
+                    onSubmit={(subscription) => { addSubscription(subscription); notifySuccess(); }}
                 />
         </SafeAreaView>
     );

@@ -56,10 +56,16 @@ Prioritised by "how badly does its absence hurt a real user", not by effort.
 
 ## P2 — polish with real payoff
 
-- [ ] **Expand/collapse animation.** Cards snap open. `react-native-reanimated`
-      is already a dependency and unused.
-- [ ] **Haptics** on create / cancel / expand. `expo-haptics` likewise
-      installed and unused.
+- [x] **Expand/collapse animation.** Core RN `LayoutAnimation`, not
+      `react-native-reanimated` - same reasoning as docs/DECISIONS.md's
+      "Drag-to-dismiss uses PanResponder, not gesture-handler" entry: the
+      built-in API needs no setup and animates the height change (plus a
+      body fade) without measuring, and is skipped when the OS has
+      reduce-motion on.
+- [x] **Haptics** on expand, and on starting a cancel/delete flow - see
+      `lib/haptics.ts`. Create is not wired: the only hookable point is the
+      modal's submit handler, in files outside this change's scope
+      (`components/CreateSubscriptionModal.tsx`, `app/(tabs)/*.tsx`).
 - [ ] **Accessibility pass.** Interactive elements have labels, but the card
       itself doesn't announce expanded state, and contrast on
       `muted-foreground` over `card` is untested against WCAG AA.

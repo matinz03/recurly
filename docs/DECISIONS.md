@@ -147,3 +147,31 @@ the status breakdown, and drops out of spend. Delete removes it permanently and
 has no undo. Users reasonably assume Cancel deletes, so the confirmation copy
 contrasts them explicitly, and Delete is deliberately the *least* prominent
 control on the card rather than the most.
+
+## Expand animation uses LayoutAnimation, not Reanimated
+
+Animating a card open means animating content of unknown height. `LayoutAnimation`
+does that without measuring anything; Reanimated would mean measuring, or a
+worklet-driven height, for a 220ms ease.
+
+Reanimated is installed but unused, and `babel-preset-expo` already auto-injects
+`react-native-worklets/plugin`, so it *would* have worked — the deciding factor
+was the static web export gate. `LayoutAnimation` is core RN with a no-op web
+shim; Reanimated's web runtime was an unnecessary unknown to introduce for this.
+
+Caveat worth knowing: under the new architecture (`newArchEnabled: true`), RN's
+own source says LayoutAnimations are "unconditionally enabled for Android, and
+conditionally enabled on iOS (pending fully shipping)". So on iOS the animation
+may simply not play — the card snaps open as it did before. It degrades, it
+doesn't break.
+
+Reduce-motion is honoured, read from a ref for the same synchronous-read reason
+the expanded id is.
+
+## Haptics fire on outcomes, not on intent
+
+A destructive haptic on *tapping* Cancel or Delete buzzes the user for being
+asked a question, then stays silent at the moment the record actually changes.
+The warning haptic therefore lives in the `Alert` confirmation callback, not the
+button handler. Create/save gets a success haptic; Edit and Pause/Resume get
+nothing, being routine and reversible.

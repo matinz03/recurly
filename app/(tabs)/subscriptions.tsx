@@ -11,6 +11,7 @@ import AddSubscriptionButton from "@/components/AddSubscriptionButton";
 import HydrationGate from "@/components/HydrationGate";
 import EmptySubscriptions from "@/components/EmptySubscriptions";
 import { nextRenewalDate } from "@/lib/utils";
+import { notifyDestructive, notifySuccess } from "@/lib/haptics";
 import { useSubscriptionStore } from "@/lib/subscriptionStore";
 import { useExpandedSubscription } from "@/lib/useExpandedSubscription";
 
@@ -94,6 +95,12 @@ const Subscriptions = () => {
     // An account with nothing in it needs a way forward; a search that matched
     // nothing needs to say so. Showing "add your first subscription" to someone
     // who has twelve and mistyped a filter would be nonsense.
+    const handleSubmitSubscription = useCallback((subscription: Subscription) => {
+        if (editing) updateSubscription(subscription);
+        else addSubscription(subscription);
+        notifySuccess();
+    }, [editing, updateSubscription, addSubscription]);
+
     const renderEmpty = () => {
         if (!hasHydrated) return <HydrationGate />;
         if (subscriptions.length === 0) return <EmptySubscriptions onAddPress={openCreate} />;
@@ -120,7 +127,10 @@ const Subscriptions = () => {
                 {
                     text: 'Cancel subscription',
                     style: 'destructive',
-                    onPress: () => cancelSubscription(subscription.id),
+                    onPress: () => {
+                        notifyDestructive();
+                        cancelSubscription(subscription.id);
+                    },
                 },
             ]
         );
@@ -137,7 +147,10 @@ const Subscriptions = () => {
                 {
                     text: 'Delete',
                     style: 'destructive',
-                    onPress: () => deleteSubscription(subscription.id),
+                    onPress: () => {
+                        notifyDestructive();
+                        deleteSubscription(subscription.id);
+                    },
                 },
             ]
         );
@@ -252,7 +265,7 @@ const Subscriptions = () => {
                 subscription={editing}
                 existingSubscriptions={subscriptions}
                 onClose={() => setIsModalVisible(false)}
-                onSubmit={editing ? updateSubscription : addSubscription}
+                onSubmit={handleSubmitSubscription}
             />
         </SafeAreaView>
     )
