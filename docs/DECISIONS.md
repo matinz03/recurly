@@ -91,5 +91,59 @@ fine for a modal dismiss, revisit if it feels laggy on low-end devices.
 ## Cancel marks status, it does not delete
 
 Cancelling sets `status: 'cancelled'` and keeps the record, so it still appears
-in history and the status breakdown while dropping out of spend totals.
-Destructive delete is a separate, still-missing action.
+in history and the status breakdown while dropping out of spend totals. Delete
+is a separate action — see below.
+
+## Native modules must be guarded for static web export
+
+`app.json` sets `web.output: "static"`, so `expo export` evaluates every module
+reachable from a route **in Node** to prerender pages. Anything that touches
+`window` or a native module at import time — or on a code path reachable during
+that pass — fails the entire web build.
+
+This has bitten twice: AsyncStorage's web backend (via the persist middleware)
+and expo-notifications. Both are now guarded (`Platform.OS === 'web'` short
+circuits, and a no-op storage backend when there's no `window`).
+
+**`tsc`, `eslint` and `jest` all pass while the web build is completely
+broken.** `npx expo export --platform web` is the only check that catches this,
+which is why CI runs it and why it's a hard gate on any change touching a
+native module.
+
+## Icons are persisted as a discriminator, never as the value
+
+A bundled PNG resolves through `require()` to a Metro asset reference that is
+only valid for the bundle that produced it. Persisting one would look correct
+until the next build, then silently resolve to the wrong asset — or nothing —
+for every stored subscription.
+
+`lib/subscriptionStore.ts` therefore writes `{ kind: 'bundled', key }` or
+`{ kind: 'svg', markup }` and swaps back on rehydrate. Do not "simplify" this by
+persisting `icon` directly.
+
+## Totals group by currency; there is no FX conversion
+
+Live rates mean a network dependency, caching, staleness and offline handling —
+too much machinery for the value right now. `totalsByCurrency()` groups instead,
+and no code path ever adds two different currencies together. Screens feature
+the dominant currency and name what they excluded rather than blending.
+
+## Screens gate on `hasHydrated`
+
+The store starts out holding the seed list, so anything rendered before
+AsyncStorage resolves is data the user may not own. Every consumer waits.
+
+The detail route is the reason this matters beyond cosmetics: it was rendering
+"This subscription couldn't be found" for records that existed, whenever a deep
+link beat hydration.
+
+The fallback must be a stable reference (`NO_SUBSCRIPTIONS`), not a fresh `[]`
+per render, or it busts the `useMemo` dependencies downstream.
+
+## Cancel and Delete are different, and the UI has to say so
+
+Cancel sets `status: 'cancelled'` and keeps the record — it stays in history and
+the status breakdown, and drops out of spend. Delete removes it permanently and
+has no undo. Users reasonably assume Cancel deletes, so the confirmation copy
+contrasts them explicitly, and Delete is deliberately the *least* prominent
+control on the card rather than the most.
