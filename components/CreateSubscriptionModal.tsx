@@ -1,4 +1,4 @@
-import { View, Text, Modal, Pressable, TextInput, KeyboardAvoidingView, Platform, ScrollView, useWindowDimensions, Animated, PanResponder, StyleSheet } from 'react-native';
+import { View, Text, Modal, Pressable, TextInput, KeyboardAvoidingView, Platform, ScrollView, Animated, PanResponder, StyleSheet } from 'react-native';
 import { BlurView } from 'expo-blur';
 import DateTimePicker, { DateTimePickerAndroid, type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { Feather } from '@expo/vector-icons';
@@ -19,6 +19,9 @@ interface CreateSubscriptionModalProps {
 
 type Frequency = 'Monthly' | 'Yearly';
 type Category = 'Entertainment' | 'AI Tools' | 'Developer Tools' | 'Design' | 'Productivity' | 'Other';
+
+// Plain decimal only: digits with at most one decimal point.
+const DECIMAL_PRICE = /^\d*\.?\d+$/;
 
 const FREQUENCIES: Frequency[] = ['Monthly', 'Yearly'];
 const CATEGORIES: Category[] = ['Entertainment', 'AI Tools', 'Developer Tools', 'Design', 'Productivity', 'Other'];
@@ -54,22 +57,11 @@ const CreateSubscriptionModal = ({ visible, onClose, onSubmit }: CreateSubscript
     const [startDate, setStartDate] = useState<Dayjs>(() => dayjs());
     const [showIosDatePicker, setShowIosDatePicker] = useState(false);
 
-    // The sheet should hug its content, but cap around 85% of the screen and
-    // scroll beyond that (e.g. once the iOS inline calendar expands it). A
-    // flex-1 ScrollView can't do this on its own - its container's height
-    // would depend on it while it depends on the container - so the actual
-    // cap is computed from measured header/content heights instead.
-    const { height: windowHeight } = useWindowDimensions();
-    const [headerHeight, setHeaderHeight] = useState(0);
-    const [formHeight, setFormHeight] = useState(0);
-    const maxSheetHeight = windowHeight * 0.85;
-    const availableFormHeight = maxSheetHeight - headerHeight;
-    const scrollViewHeight =
-        headerHeight > 0 && formHeight > availableFormHeight ? availableFormHeight : undefined;
-
+    // Number() alone would accept exponential and hex literals, turning a
+    // pasted "1e5" into a $100,000 subscription - so check the shape first.
     const isValidPrice = () => {
         const trimmedPrice = price.trim();
-        if (!trimmedPrice) return false;
+        if (!DECIMAL_PRICE.test(trimmedPrice)) return false;
         const numValue = Number(trimmedPrice);
         return Number.isFinite(numValue) && numValue > 0;
     };
@@ -84,6 +76,8 @@ const CreateSubscriptionModal = ({ visible, onClose, onSubmit }: CreateSubscript
         setFrequency('Monthly');
         setCategory('Other');
         setStartDate(dayjs());
+        // Otherwise an iOS calendar left open is still expanded on reopen.
+        setShowIosDatePicker(false);
     };
 
     const handleClose = () => {
@@ -172,10 +166,7 @@ const CreateSubscriptionModal = ({ visible, onClose, onSubmit }: CreateSubscript
                         style={{ transform: [{ translateY: dragY }] }}
                         onPress={(event) => event.stopPropagation()}
                     >
-                        <View
-                            onLayout={(event) => setHeaderHeight(event.nativeEvent.layout.height)}
-                            {...panResponder.panHandlers}
-                        >
+                        <View {...panResponder.panHandlers}>
                             <View className="modal-handle-row">
                                 <View className="modal-handle" />
                             </View>
@@ -188,106 +179,101 @@ const CreateSubscriptionModal = ({ visible, onClose, onSubmit }: CreateSubscript
                         </View>
 
                         <ScrollView
-                            style={scrollViewHeight !== undefined ? { height: scrollViewHeight } : undefined}
                             showsVerticalScrollIndicator={false}
                             keyboardShouldPersistTaps="handled"
+                            contentContainerClassName="modal-body"
                         >
-                            <View
-                                className="modal-body"
-                                onLayout={(event) => setFormHeight(event.nativeEvent.layout.height)}
-                            >
-                                <View className="auth-field">
-                                    <View className="flex-row items-center justify-between">
-                                        <Text className="auth-label">Name</Text>
-                                        {matchedIcon && (
-                                            <SubscriptionIcon icon={matchedIcon} className="size-7 rounded-md bg-background" svgSize={16} />
-                                        )}
-                                    </View>
-                                    <TextInput
-                                        className="auth-input"
-                                        placeholder="Subscription name"
-                                        placeholderTextColor="rgba(0, 0, 0, 0.4)"
-                                        value={name}
-                                        onChangeText={setName}
-                                    />
-                                </View>
-
-                                <View className="auth-field">
-                                    <Text className="auth-label">Price</Text>
-                                    <TextInput
-                                        className="auth-input"
-                                        placeholder="0.00"
-                                        placeholderTextColor="rgba(0, 0, 0, 0.4)"
-                                        value={price}
-                                        onChangeText={setPrice}
-                                        keyboardType="decimal-pad"
-                                    />
-                                </View>
-
-                                <View className="auth-field">
-                                    <Text className="auth-label">Frequency</Text>
-                                    <View className="picker-row">
-                                        {FREQUENCIES.map((option) => (
-                                            <Pressable
-                                                key={option}
-                                                className={clsx('picker-option', frequency === option && 'picker-option-active')}
-                                                onPress={() => setFrequency(option)}
-                                            >
-                                                <Text className={clsx('picker-option-text', frequency === option && 'picker-option-text-active')}>
-                                                    {option}
-                                                </Text>
-                                            </Pressable>
-                                        ))}
-                                    </View>
-                                </View>
-
-                                <View className="auth-field">
-                                    <Text className="auth-label">Start Date</Text>
-                                    <Pressable
-                                        className="auth-input flex-row items-center justify-between"
-                                        onPress={handleStartDatePress}
-                                        accessibilityLabel="Choose start date"
-                                    >
-                                        <Text className="text-base font-sans-medium text-primary">
-                                            {startDate.format('MM/DD/YYYY')}
-                                        </Text>
-                                        <Feather name="calendar" size={18} color={colors.mutedForeground} />
-                                    </Pressable>
-                                    {Platform.OS === 'ios' && showIosDatePicker && (
-                                        <DateTimePicker
-                                            value={startDate.toDate()}
-                                            mode="date"
-                                            display="inline"
-                                            onChange={handleDateChange}
-                                        />
+                            <View className="auth-field">
+                                <View className="flex-row items-center justify-between">
+                                    <Text className="auth-label">Name</Text>
+                                    {matchedIcon && (
+                                        <SubscriptionIcon icon={matchedIcon} className="size-7 rounded-md bg-background" svgSize={16} />
                                     )}
                                 </View>
-
-                                <View className="auth-field">
-                                    <Text className="auth-label">Category</Text>
-                                    <View className="category-scroll">
-                                        {CATEGORIES.map((cat) => (
-                                            <Pressable
-                                                key={cat}
-                                                className={clsx('category-chip', category === cat && 'category-chip-active')}
-                                                onPress={() => setCategory(cat)}
-                                            >
-                                                <Text className={clsx('category-chip-text', category === cat && 'category-chip-text-active')}>
-                                                    {cat}
-                                                </Text>
-                                            </Pressable>
-                                        ))}
-                                    </View>
-                                </View>
-
-                                <Pressable
-                                    className={clsx('auth-button', !isValidForm && 'auth-button-disabled')}
-                                    onPress={handleSubmit}
-                                    disabled={!isValidForm}
-                                >
-                                    <Text className="auth-button-text">Create Subscription</Text>
-                                </Pressable>
+                                <TextInput
+                                    className="auth-input"
+                                    placeholder="Subscription name"
+                                    placeholderTextColor="rgba(0, 0, 0, 0.4)"
+                                    value={name}
+                                    onChangeText={setName}
+                                />
                             </View>
+
+                            <View className="auth-field">
+                                <Text className="auth-label">Price</Text>
+                                <TextInput
+                                    className="auth-input"
+                                    placeholder="0.00"
+                                    placeholderTextColor="rgba(0, 0, 0, 0.4)"
+                                    value={price}
+                                    onChangeText={setPrice}
+                                    keyboardType="decimal-pad"
+                                />
+                            </View>
+
+                            <View className="auth-field">
+                                <Text className="auth-label">Frequency</Text>
+                                <View className="picker-row">
+                                    {FREQUENCIES.map((option) => (
+                                        <Pressable
+                                            key={option}
+                                            className={clsx('picker-option', frequency === option && 'picker-option-active')}
+                                            onPress={() => setFrequency(option)}
+                                        >
+                                            <Text className={clsx('picker-option-text', frequency === option && 'picker-option-text-active')}>
+                                                {option}
+                                            </Text>
+                                        </Pressable>
+                                    ))}
+                                </View>
+                            </View>
+
+                            <View className="auth-field">
+                                <Text className="auth-label">Start Date</Text>
+                                <Pressable
+                                    className="auth-input flex-row items-center justify-between"
+                                    onPress={handleStartDatePress}
+                                    accessibilityLabel="Choose start date"
+                                >
+                                    <Text className="text-base font-sans-medium text-primary">
+                                        {startDate.format('MM/DD/YYYY')}
+                                    </Text>
+                                    <Feather name="calendar" size={18} color={colors.mutedForeground} />
+                                </Pressable>
+                                {Platform.OS === 'ios' && showIosDatePicker && (
+                                    <DateTimePicker
+                                        value={startDate.toDate()}
+                                        mode="date"
+                                        display="inline"
+                                        onChange={handleDateChange}
+                                    />
+                                )}
+                            </View>
+
+                            <View className="auth-field">
+                                <Text className="auth-label">Category</Text>
+                                <View className="category-scroll">
+                                    {CATEGORIES.map((cat) => (
+                                        <Pressable
+                                            key={cat}
+                                            className={clsx('category-chip', category === cat && 'category-chip-active')}
+                                            onPress={() => setCategory(cat)}
+                                        >
+                                            <Text className={clsx('category-chip-text', category === cat && 'category-chip-text-active')}>
+                                                {cat}
+                                            </Text>
+                                        </Pressable>
+                                    ))}
+                                </View>
+                            </View>
+
+                            <Pressable
+                                className={clsx('auth-button', !isValidForm && 'auth-button-disabled')}
+                                onPress={handleSubmit}
+                                disabled={!isValidForm}
+                            >
+                                <Text className="auth-button-text">Create Subscription</Text>
+                            </Pressable>
                         </ScrollView>
                     </AnimatedPressable>
                 </Pressable>

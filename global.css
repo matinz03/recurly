@@ -366,8 +366,12 @@
         @apply flex-1;
     }
 
+    /* max-h (not h) so the sheet hugs short content, and a percentage so it
+       resolves against the keyboard-shrunk overlay rather than the whole
+       screen. The ScrollView inside must NOT be flex-1: that zeroes its
+       flex-basis, so the sheet would collapse to just the header. */
     .modal-container {
-        @apply mt-auto rounded-t-3xl bg-background;
+        @apply mt-auto max-h-[85%] rounded-t-3xl bg-background;
     }
 
     .modal-handle-row {

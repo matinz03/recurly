@@ -1,28 +1,25 @@
 import type { ImageSourcePropType } from 'react-native';
-import type { SimpleIcon } from 'simple-icons';
-import * as SimpleIcons from 'simple-icons';
+import { BRAND_ICONS } from '@/constants/brandIcons';
 import { icons, type IconKey } from '@/constants/icons';
 
-// Brands we ship a real bundled logo for - checked before falling back to
-// simple-icons, since a few well-known names (Adobe, Canva, OpenAI) aren't in
-// that set, and "Canva" would otherwise fuzzy-match the unrelated "Canvas" icon.
-const LOCAL_BRAND_ICONS: Array<{ key: IconKey; label: string }> = [
-    { key: 'adobe', label: 'Adobe' },
-    { key: 'canva', label: 'Canva' },
-    { key: 'claude', label: 'Claude' },
-    { key: 'dropbox', label: 'Dropbox' },
-    { key: 'figma', label: 'Figma' },
-    { key: 'github', label: 'GitHub' },
-    { key: 'medium', label: 'Medium' },
-    { key: 'netflix', label: 'Netflix' },
-    { key: 'notion', label: 'Notion' },
-    { key: 'openai', label: 'OpenAI' },
-    { key: 'spotify', label: 'Spotify' },
-];
-
-const BRAND_ICONS = Object.values(SimpleIcons).filter(
-    (value): value is SimpleIcon => typeof value === 'object' && value !== null && 'path' in value
-);
+// Brands we ship a real bundled logo for - checked before the generated
+// simple-icons subset, since several well-known names (Adobe, Canva, OpenAI)
+// were removed from that set for trademark reasons.
+const LOCAL_BRAND_ICONS: Record<string, IconKey> = {
+    adobe: 'adobe',
+    adobecreativecloud: 'adobe',
+    canva: 'canva',
+    claude: 'claude',
+    dropbox: 'dropbox',
+    figma: 'figma',
+    github: 'github',
+    medium: 'medium',
+    netflix: 'netflix',
+    notion: 'notion',
+    openai: 'openai',
+    chatgpt: 'openai',
+    spotify: 'spotify',
+};
 
 const normalize = (value: string) => value.toLowerCase().replace(/[^a-z0-9]/g, '');
 
@@ -34,17 +31,21 @@ const nameCandidates = (name: string) => {
     return [...new Set([normalize(name), ...words.map(normalize)])].filter(Boolean);
 };
 
+/**
+ * Best-effort icon for a subscription name. Returns a bundled image source, a
+ * raw SVG string, or null when nothing matches. Both lookups are keyed object
+ * hits rather than scans, so this is cheap enough to call on every keystroke.
+ */
 export const matchSubscriptionIcon = (name: string): ImageSourcePropType | string | null => {
     const candidates = nameCandidates(name);
-    if (candidates.length === 0) return null;
 
     for (const candidate of candidates) {
-        const local = LOCAL_BRAND_ICONS.find(({ label }) => normalize(label) === candidate);
-        if (local) return icons[local.key];
+        const localKey = LOCAL_BRAND_ICONS[candidate];
+        if (localKey) return icons[localKey];
     }
 
     for (const candidate of candidates) {
-        const brandIcon = BRAND_ICONS.find((icon) => normalize(icon.title) === candidate);
+        const brandIcon = BRAND_ICONS[candidate];
         if (brandIcon) {
             return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="#${brandIcon.hex}" d="${brandIcon.path}"/></svg>`;
         }

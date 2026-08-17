@@ -8,7 +8,8 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "generate:brand-icons": "node ./scripts/generate-brand-icons.js"
   },
   "dependencies": {
     "@clerk/expo": "3.1.5",
@@ -49,7 +50,6 @@
     "react-native-svg": "^15.15.5",
     "react-native-web": "~0.21.0",
     "react-native-worklets": "0.5.1",
-    "simple-icons": "^16.28.0",
     "zustand": "^5.0.15"
   },
   "devDependencies": {
@@ -58,6 +58,7 @@
     "eslint": "^9.25.0",
     "eslint-config-expo": "~10.0.0",
     "postcss": "^8.5.26",
+    "simple-icons": "^16.28.0",
     "tailwindcss": "^4.3.3",
     "typescript": "~5.9.2"
   },

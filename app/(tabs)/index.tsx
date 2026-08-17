@@ -6,30 +6,22 @@ import images from "@/constants/images";
 import {HOME_BALANCE, UPCOMING_SUBSCRIPTIONS} from "@/constants/data";
 import {icons} from "@/constants/icons";
 import {formatCurrency} from "@/lib/utils";
-import {posthog} from "@/lib/posthog";
 import dayjs from "dayjs";
 import ListHeading from "@/components/ListHeading";
 import UpcomingSubscriptionCard from "@/components/UpcomingSubscriptionCard";
 import SubscriptionCard from "@/components/SubscriptionCard";
 import CreateSubscriptionModal from "@/components/CreateSubscriptionModal";
-import {useCallback, useState} from "react";
-import { useFocusEffect } from "expo-router";
+import {useState} from "react";
 import { useUser } from '@clerk/expo';
 import { useSubscriptionStore } from "@/lib/subscriptionStore";
+import { useExpandedSubscription } from "@/lib/useExpandedSubscription";
 const SafeAreaView = styled(RNSafeAreaView);
 
 export default function App() {
     const { user } = useUser();
-    const [expandedSubscriptionId, setExpandedSubscriptionId] = useState<string | null>(null);
     const [isCreateModalVisible, setIsCreateModalVisible] = useState(false);
     const { subscriptions, addSubscription } = useSubscriptionStore();
-
-    // Don't leave a card expanded from a previous visit to this tab.
-    useFocusEffect(
-        useCallback(() => {
-            return () => setExpandedSubscriptionId(null);
-        }, [])
-    );
+    const { expandedId, toggleExpanded } = useExpandedSubscription();
 
     // Get user display name: firstName, fullName, or email
     const displayName = user?.firstName || user?.fullName || user?.emailAddresses[0]?.emailAddress || 'User';
@@ -37,7 +29,10 @@ export default function App() {
     return (
         <SafeAreaView className="flex-1 bg-background p-5">
                 <FlatList
-                    ListHeaderComponent={() => (
+                    // An element, not a function: a new function identity each
+                    // render would remount the whole header and reset the
+                    // Upcoming carousel's scroll position.
+                    ListHeaderComponent={
                         <>
                             <View className="home-header">
                                 <View className="home-user">
@@ -81,24 +76,17 @@ export default function App() {
 
                             <ListHeading title="All Subscriptions" />
                         </>
-                    )}
+                    }
                     data={subscriptions}
                     keyExtractor={(item) => item.id}
                     renderItem={({ item }) => (
                         <SubscriptionCard
                             {...item}
-                            expanded={expandedSubscriptionId === item.id}
-                            onPress={() => {
-                                const expanded = expandedSubscriptionId !== item.id;
-                                setExpandedSubscriptionId(expanded ? item.id : null);
-                                posthog?.capture('subscription_details_toggled', {
-                                    subscription_id: item.id,
-                                    expanded,
-                                });
-                            }}
+                            expanded={expandedId === item.id}
+                            onPress={() => toggleExpanded(item.id)}
                         />
                     )}
-                    extraData={expandedSubscriptionId}
+                    extraData={expandedId}
                     ItemSeparatorComponent={() => <View className="h-4" />}
                     showsVerticalScrollIndicator={false}
                     ListEmptyComponent={<Text className="home-empty-state">No subscriptions yet.</Text>}
