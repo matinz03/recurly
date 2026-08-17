@@ -97,13 +97,22 @@ const SignIn = () => {
         setSsoStrategy(strategy);
 
         try {
-            const { createdSessionId, setActive, authSessionResult } = await startSSOFlow({ strategy });
+            const { createdSessionId, setActive, authSessionResult, signUp } =
+                await startSSOFlow({ strategy });
 
             if (createdSessionId && setActive) {
                 await setActive({ session: createdSessionId });
             } else if (authSessionResult?.type !== 'cancel' && authSessionResult?.type !== 'dismiss') {
-                // No session and the user didn't back out, so the flow genuinely failed.
-                setFormError('Could not complete sign-in with that provider. Please try again.');
+                // A first-time SSO user is transferred into signUp.create({ transfer: true }).
+                // That can't complete if the instance requires fields the provider doesn't
+                // supply, which leaves no session - so name them rather than guess.
+                const missing = signUp?.missingFields ?? [];
+
+                setFormError(
+                    missing.length > 0
+                        ? `This provider didn't supply required field(s): ${missing.join(', ')}. Make them optional in the Clerk Dashboard.`
+                        : 'Could not complete sign-in with that provider. Please try again.'
+                );
             }
         } catch (err) {
             console.error(JSON.stringify(err, null, 2));
