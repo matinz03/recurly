@@ -1,5 +1,5 @@
 import dayjs from 'dayjs';
-import { formatCurrency, monthlyPrice, nextRenewalDate } from '@/lib/utils';
+import { formatCurrency, monthlyPrice, nextRenewalDate, totalsByCurrency } from '@/lib/utils';
 
 const subscription = (overrides: Partial<Subscription> = {}): Subscription => ({
     id: 'test',
@@ -7,6 +7,9 @@ const subscription = (overrides: Partial<Subscription> = {}): Subscription => ({
     name: 'Test',
     price: 10,
     billing: 'Monthly',
+    // totalsByCurrency filters on status, so the shared factory needs a
+    // default that counts - individual tests override it to prove exclusion.
+    status: 'active',
     ...overrides,
 });
 
@@ -46,5 +49,61 @@ describe('nextRenewalDate', () => {
     it('returns null for missing or unparseable input', () => {
         expect(nextRenewalDate(undefined, 'Monthly')).toBeNull();
         expect(nextRenewalDate('not a date', 'Monthly')).toBeNull();
+    });
+});
+
+describe('totalsByCurrency', () => {
+    it('collapses a single currency into one entry', () => {
+        const subscriptions = [
+            subscription({ id: 'a', price: 10, currency: 'USD' }),
+            subscription({ id: 'b', price: 5, currency: 'USD' }),
+        ];
+
+        expect(totalsByCurrency(subscriptions)).toEqual([
+            { currency: 'USD', monthly: 15, yearly: 180, count: 2 },
+        ]);
+    });
+
+    it('keeps distinct currencies apart and sorts by monthly spend descending', () => {
+        const subscriptions = [
+            subscription({ id: 'a', price: 5, currency: 'EUR' }),
+            subscription({ id: 'b', price: 20, currency: 'USD' }),
+        ];
+
+        expect(totalsByCurrency(subscriptions)).toEqual([
+            { currency: 'USD', monthly: 20, yearly: 240, count: 1 },
+            { currency: 'EUR', monthly: 5, yearly: 60, count: 1 },
+        ]);
+    });
+
+    it('normalises yearly plans before totalling per currency', () => {
+        const subscriptions = [
+            subscription({ id: 'a', price: 120, billing: 'Yearly', currency: 'GBP' }),
+            subscription({ id: 'b', price: 5, billing: 'Monthly', currency: 'GBP' }),
+        ];
+
+        expect(totalsByCurrency(subscriptions)).toEqual([
+            { currency: 'GBP', monthly: 15, yearly: 180, count: 2 },
+        ]);
+    });
+
+    it('treats a missing currency as USD', () => {
+        const subscriptions = [subscription({ id: 'a', price: 10, currency: undefined })];
+
+        expect(totalsByCurrency(subscriptions)).toEqual([
+            { currency: 'USD', monthly: 10, yearly: 120, count: 1 },
+        ]);
+    });
+
+    it('excludes paused and cancelled subscriptions', () => {
+        const subscriptions = [
+            subscription({ id: 'a', price: 10, currency: 'USD', status: 'active' }),
+            subscription({ id: 'b', price: 50, currency: 'USD', status: 'paused' }),
+            subscription({ id: 'c', price: 100, currency: 'EUR', status: 'cancelled' }),
+        ];
+
+        expect(totalsByCurrency(subscriptions)).toEqual([
+            { currency: 'USD', monthly: 10, yearly: 120, count: 1 },
+        ]);
     });
 });

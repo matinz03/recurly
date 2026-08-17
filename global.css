@@ -106,6 +106,10 @@
         @apply text-xl font-sans-medium text-white;
     }
 
+    .home-balance-secondary {
+        @apply text-sm font-sans-medium text-white/70;
+    }
+
     .list-head {
         @apply my-5 flex-row items-center justify-between;
     }
@@ -335,6 +339,10 @@
         @apply text-xs font-sans-semibold text-muted-foreground;
     }
 
+    .insights-note {
+        @apply text-xs font-sans-medium text-muted-foreground;
+    }
+
     .auth-safe-area {
         @apply flex-1 bg-background;
     }
@@ -537,5 +545,101 @@
 
     .category-chip-text-active {
         @apply text-accent;
+    }
+
+    .detail-link-row {
+        @apply mt-2 flex-row items-center justify-end gap-1 px-2;
+    }
+
+    .detail-link-text {
+        @apply text-sm font-sans-semibold text-accent;
+    }
+
+    .detail-header {
+        @apply flex-row items-center gap-3 px-5 pb-4 pt-2;
+    }
+
+    .detail-back {
+        @apply size-10 items-center justify-center rounded-full bg-muted;
+    }
+
+    .detail-back-icon {
+        @apply size-5;
+    }
+
+    .detail-header-title {
+        @apply flex-1 text-center text-lg font-sans-bold text-primary;
+    }
+
+    .detail-header-spacer {
+        @apply size-10;
+    }
+
+    .detail-missing {
+        @apply flex-1 items-center justify-center gap-4 p-6;
+    }
+
+    .detail-missing-text {
+        @apply text-center text-base font-sans-medium text-muted-foreground;
+    }
+
+    .detail-missing-button {
+        @apply items-center rounded-full bg-accent px-6 py-3;
+    }
+
+    .detail-missing-button-text {
+        @apply text-base font-sans-bold text-primary;
+    }
+
+    .detail-content {
+        @apply gap-6 p-5 pb-30;
+    }
+
+    .detail-hero {
+        @apply items-center gap-3 rounded-3xl border border-border bg-card p-6;
+    }
+
+    .detail-hero-icon {
+        @apply mb-1 size-20 items-center justify-center rounded-2xl bg-background;
+    }
+
+    .detail-name {
+        @apply text-center text-2xl font-sans-bold text-primary;
+    }
+
+    .detail-price-row {
+        @apply flex-row items-baseline gap-2;
+    }
+
+    .detail-price {
+        @apply text-3xl font-sans-extrabold text-primary;
+    }
+
+    .detail-billing {
+        @apply text-base font-sans-medium text-muted-foreground;
+    }
+
+    .detail-status-badge {
+        @apply mt-2 rounded-full bg-background px-4 py-1.5;
+    }
+
+    .detail-status-text {
+        @apply text-sm font-sans-bold text-primary;
+    }
+
+    .detail-renewal-card {
+        @apply gap-1 rounded-2xl border border-border bg-card p-4;
+    }
+
+    .detail-renewal-label {
+        @apply text-sm font-sans-semibold text-muted-foreground;
+    }
+
+    .detail-renewal-date {
+        @apply text-xl font-sans-bold text-primary;
+    }
+
+    .detail-renewal-days {
+        @apply text-sm font-sans-semibold text-accent;
     }
 }

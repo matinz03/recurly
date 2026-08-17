@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { Alert, FlatList, Keyboard, Pressable, Text, TextInput, View } from 'react-native';
 import { SafeAreaView as RNSafeAreaView } from "react-native-safe-area-context";
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { styled } from "nativewind";
 import { Feather } from '@expo/vector-icons';
 import { colors } from "@/constants/theme";
@@ -17,6 +17,7 @@ const SafeAreaView = styled(RNSafeAreaView);
 const Subscriptions = () => {
     // Set by Home's "View all" on the Upcoming heading.
     const { sort } = useLocalSearchParams<{ sort?: string }>();
+    const router = useRouter();
 
     const [query, setQuery] = useState('');
     const [editing, setEditing] = useState<Subscription | null>(null);
@@ -102,16 +103,30 @@ const Subscriptions = () => {
                 data={visibleSubscriptions}
                 keyExtractor={(item) => item.id}
                 renderItem={({ item }) => (
-                    <SubscriptionCard
-                        {...item}
-                        expanded={expandedId === item.id}
-                        onPress={() => {
-                            Keyboard.dismiss();
-                            toggleExpanded(item.id);
-                        }}
-                        onEditPress={() => openEdit(item)}
-                        onCancelPress={() => confirmCancel(item)}
-                    />
+                    <View>
+                        <SubscriptionCard
+                            {...item}
+                            expanded={expandedId === item.id}
+                            onPress={() => {
+                                Keyboard.dismiss();
+                                toggleExpanded(item.id);
+                            }}
+                            onEditPress={() => openEdit(item)}
+                            onCancelPress={() => confirmCancel(item)}
+                        />
+                        {/* SubscriptionCard's own Pressable already toggles expand on
+                            tap - this sits outside it as a distinct affordance to the
+                            full detail screen, so neither gesture steals the other. */}
+                        <Pressable
+                            className="detail-link-row"
+                            onPress={() => router.push({ pathname: '/subscriptions/[id]', params: { id: item.id } })}
+                            accessibilityRole="button"
+                            accessibilityLabel={`View details for ${item.name}`}
+                        >
+                            <Text className="detail-link-text">Details</Text>
+                            <Feather name="chevron-right" size={16} color={colors.accent} />
+                        </Pressable>
+                    </View>
                 )}
                 extraData={expandedId}
                 ItemSeparatorComponent={() => <View className="h-4" />}

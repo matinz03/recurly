@@ -60,3 +60,43 @@ export const daysUntil = (date: dayjs.Dayjs): number =>
 /** Price normalised to a monthly figure, so yearly plans stay comparable. */
 export const monthlyPrice = ({ price, billing }: Subscription): number =>
   billingUnit(billing) === "year" ? price / 12 : price;
+
+export interface CurrencyTotal {
+  currency: string;
+  monthly: number;
+  yearly: number;
+  count: number;
+}
+
+/**
+ * One entry per distinct currency present among active subscriptions, sorted
+ * by monthly spend descending.
+ *
+ * Deliberately never sums across currencies - $10 + €10 is not $20 - so every
+ * screen that shows a total must pick from this list (dominant entry, plus
+ * the rest called out separately) rather than reducing straight to a number.
+ * A missing `currency` is treated as 'USD', matching the seed data's implicit
+ * default. Cancelled/paused subscriptions are excluded, same rule as every
+ * other spend total in the app.
+ */
+export const totalsByCurrency = (subscriptions: Subscription[]): CurrencyTotal[] => {
+  const byCurrency = new Map<string, { monthly: number; count: number }>();
+
+  for (const subscription of subscriptions) {
+    if (subscription.status?.toLowerCase() !== "active") continue;
+    const currency = subscription.currency ?? "USD";
+    const existing = byCurrency.get(currency) ?? { monthly: 0, count: 0 };
+    existing.monthly += monthlyPrice(subscription);
+    existing.count += 1;
+    byCurrency.set(currency, existing);
+  }
+
+  return [...byCurrency.entries()]
+    .map(([currency, { monthly, count }]) => ({
+      currency,
+      monthly,
+      yearly: monthly * 12,
+      count,
+    }))
+    .sort((a, b) => b.monthly - a.monthly);
+};

@@ -3,7 +3,7 @@ import { SafeAreaView as RNSafeAreaView } from "react-native-safe-area-context";
 import { styled } from "nativewind";
 import { useMemo } from 'react';
 import ListHeading from '@/components/ListHeading';
-import { formatCurrency, monthlyPrice } from '@/lib/utils';
+import { formatCurrency, monthlyPrice, totalsByCurrency } from '@/lib/utils';
 import { useSubscriptionStore } from '@/lib/subscriptionStore';
 
 const SafeAreaView = styled(RNSafeAreaView);
@@ -18,10 +18,21 @@ const Insights = () => {
         // Only active plans are money you're actually committed to; paused and
         // cancelled ones would inflate every total.
         const active = subscriptions.filter((s) => s.status?.toLowerCase() === 'active');
-        const monthlyTotal = active.reduce((total, s) => total + monthlyPrice(s), 0);
+
+        // Never sum across currencies (see docs/DECISIONS.md). The stat tiles
+        // and breakdowns below are scoped to the single largest currency;
+        // anything else active is called out in otherTotals rather than
+        // silently blended into the totals.
+        const totals = totalsByCurrency(subscriptions);
+        const dominant = totals[0];
+        const currency = dominant?.currency ?? 'USD';
+        const otherTotals = totals.slice(1);
+        const dominantActive = active.filter((s) => (s.currency ?? 'USD') === currency);
+
+        const monthlyTotal = dominant?.monthly ?? 0;
 
         const byCategory = new Map<string, number>();
-        for (const subscription of active) {
+        for (const subscription of dominantActive) {
             const key = subscription.category?.trim() || subscription.plan?.trim() || 'Uncategorised';
             byCategory.set(key, (byCategory.get(key) ?? 0) + monthlyPrice(subscription));
         }
@@ -30,7 +41,7 @@ const Insights = () => {
             .map(([label, amount]) => ({ label, amount }))
             .sort((a, b) => b.amount - a.amount);
 
-        const top = [...active]
+        const top = [...dominantActive]
             .map((s) => ({ id: s.id, name: s.name, amount: monthlyPrice(s), billing: s.billing }))
             .sort((a, b) => b.amount - a.amount)
             .slice(0, TOP_LIMIT);
@@ -41,13 +52,15 @@ const Insights = () => {
         }));
 
         return {
+            currency,
             monthlyTotal,
             yearlyTotal: monthlyTotal * 12,
-            activeCount: active.length,
-            averageCost: active.length ? monthlyTotal / active.length : 0,
+            activeCount: dominantActive.length,
+            averageCost: dominantActive.length ? monthlyTotal / dominantActive.length : 0,
             categories,
             top,
             counts,
+            otherTotals,
         };
     }, [subscriptions]);
 
@@ -67,19 +80,29 @@ const Insights = () => {
                 <View className="insights-summary-row">
                     <View className="insights-stat">
                         <Text className="insights-stat-label">Per month</Text>
-                        <Text className="insights-stat-value">{formatCurrency(insights.monthlyTotal)}</Text>
+                        <Text className="insights-stat-value">{formatCurrency(insights.monthlyTotal, insights.currency)}</Text>
                         <Text className="insights-stat-meta">
                             {insights.activeCount} active {insights.activeCount === 1 ? 'plan' : 'plans'}
                         </Text>
                     </View>
                     <View className="insights-stat">
                         <Text className="insights-stat-label">Per year</Text>
-                        <Text className="insights-stat-value">{formatCurrency(insights.yearlyTotal)}</Text>
+                        <Text className="insights-stat-value">{formatCurrency(insights.yearlyTotal, insights.currency)}</Text>
                         <Text className="insights-stat-meta">
-                            {formatCurrency(insights.averageCost)} avg / plan
+                            {formatCurrency(insights.averageCost, insights.currency)} avg / plan
                         </Text>
                     </View>
                 </View>
+
+                {/* Only present with more than one active currency, so the totals
+                    above are never a silent blend - the rest is called out here. */}
+                {insights.otherTotals.length > 0 && (
+                    <Text className="insights-note">
+                        Also active, not included below: {insights.otherTotals
+                            .map((total) => `${formatCurrency(total.monthly, total.currency)}/mo across ${total.count} ${total.count === 1 ? 'plan' : 'plans'}`)
+                            .join(' · ')}
+                    </Text>
+                )}
 
                 <View className="insights-card">
                     <Text className="insights-card-title">Where it goes</Text>
@@ -102,7 +125,7 @@ const Insights = () => {
                                         style={{ width: `${largestCategory > 0 ? (amount / largestCategory) * 100 : 0}%` }}
                                     />
                                 </View>
-                                <Text className="insights-stat-meta">{formatCurrency(amount)} / month</Text>
+                                <Text className="insights-stat-meta">{formatCurrency(amount, insights.currency)} / month</Text>
                             </View>
                         ))
                     )}
@@ -117,7 +140,7 @@ const Insights = () => {
                             <View key={id} className="insights-row">
                                 <View className="insights-row-head">
                                     <Text className="insights-row-label" numberOfLines={1}>{name}</Text>
-                                    <Text className="insights-row-value">{formatCurrency(amount)}</Text>
+                                    <Text className="insights-row-value">{formatCurrency(amount, insights.currency)}</Text>
                                 </View>
                                 <View className="insights-track">
                                     <View

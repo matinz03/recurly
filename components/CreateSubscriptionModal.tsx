@@ -22,12 +22,14 @@ interface CreateSubscriptionModalProps {
 
 type Frequency = 'Monthly' | 'Yearly';
 type Category = 'Entertainment' | 'AI Tools' | 'Developer Tools' | 'Design' | 'Productivity' | 'Other';
+type Currency = 'USD' | 'EUR' | 'GBP' | 'CAD' | 'JPY';
 
 // Plain decimal only: digits with at most one decimal point.
 const DECIMAL_PRICE = /^\d*\.?\d+$/;
 
 const FREQUENCIES: Frequency[] = ['Monthly', 'Yearly'];
 const CATEGORIES: Category[] = ['Entertainment', 'AI Tools', 'Developer Tools', 'Design', 'Productivity', 'Other'];
+const CURRENCIES: Currency[] = ['USD', 'EUR', 'GBP', 'CAD', 'JPY'];
 
 const CATEGORY_COLORS: Record<Category, string> = {
     Entertainment: '#ff6b6b',
@@ -41,6 +43,9 @@ const CATEGORY_COLORS: Record<Category, string> = {
 const isCategory = (value?: string): value is Category =>
     !!value && (CATEGORIES as string[]).includes(value);
 
+const isCurrency = (value?: string): value is Currency =>
+    !!value && (CURRENCIES as string[]).includes(value);
+
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 const CreateSubscriptionModal = ({ visible, onClose, onSubmit, subscription }: CreateSubscriptionModalProps) => {
@@ -49,6 +54,7 @@ const CreateSubscriptionModal = ({ visible, onClose, onSubmit, subscription }: C
     const [name, setName] = useState('');
     const [price, setPrice] = useState('');
     const [frequency, setFrequency] = useState<Frequency>('Monthly');
+    const [currency, setCurrency] = useState<Currency>('USD');
     const [category, setCategory] = useState<Category>('Other');
     const [startDate, setStartDate] = useState<Dayjs>(() => dayjs());
     const [showIosDatePicker, setShowIosDatePicker] = useState(false);
@@ -61,6 +67,9 @@ const CreateSubscriptionModal = ({ visible, onClose, onSubmit, subscription }: C
             setName(subscription.name);
             setPrice(String(subscription.price));
             setFrequency(subscription.billing?.toLowerCase() === 'yearly' ? 'Yearly' : 'Monthly');
+            // Preserve the existing currency rather than resetting to USD, so
+            // editing a non-USD subscription can't silently change its currency.
+            setCurrency(isCurrency(subscription.currency) ? subscription.currency : 'USD');
             setCategory(isCategory(subscription.category) ? subscription.category : 'Other');
             setStartDate(subscription.startDate ? dayjs(subscription.startDate) : dayjs());
         }
@@ -84,6 +93,7 @@ const CreateSubscriptionModal = ({ visible, onClose, onSubmit, subscription }: C
         setName('');
         setPrice('');
         setFrequency('Monthly');
+        setCurrency('USD');
         setCategory('Other');
         setStartDate(dayjs());
         // Otherwise an iOS calendar left open is still expanded on reopen.
@@ -158,7 +168,7 @@ const CreateSubscriptionModal = ({ visible, onClose, onSubmit, subscription }: C
             status: subscription?.status ?? 'active',
             startDate: startDate.toISOString(),
             price: priceValue,
-            currency: subscription?.currency ?? 'USD',
+            currency,
             billing: frequency,
             renewalDate: renewalDate.toISOString(),
             color: CATEGORY_COLORS[category],
@@ -240,6 +250,23 @@ const CreateSubscriptionModal = ({ visible, onClose, onSubmit, subscription }: C
                                             onPress={() => setFrequency(option)}
                                         >
                                             <Text className={clsx('picker-option-text', frequency === option && 'picker-option-text-active')}>
+                                                {option}
+                                            </Text>
+                                        </Pressable>
+                                    ))}
+                                </View>
+                            </View>
+
+                            <View className="auth-field">
+                                <Text className="auth-label">Currency</Text>
+                                <View className="picker-row">
+                                    {CURRENCIES.map((option) => (
+                                        <Pressable
+                                            key={option}
+                                            className={clsx('picker-option', currency === option && 'picker-option-active')}
+                                            onPress={() => setCurrency(option)}
+                                        >
+                                            <Text className={clsx('picker-option-text', currency === option && 'picker-option-text-active')}>
                                                 {option}
                                             </Text>
                                         </Pressable>

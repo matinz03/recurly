@@ -1,14 +1,121 @@
-import {View, Text} from 'react-native'
-import {Link, useLocalSearchParams} from "expo-router";
+import { Image, Pressable, ScrollView, Text, View } from 'react-native';
+import { SafeAreaView as RNSafeAreaView } from 'react-native-safe-area-context';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { styled } from 'nativewind';
+import { useMemo } from 'react';
+import { icons } from '@/constants/icons';
+import SubscriptionIcon from '@/components/SubscriptionIcon';
+import { useSubscriptionStore } from '@/lib/subscriptionStore';
+import { daysUntil, formatCurrency, formatStatusLabel, formatSubscriptionDateTime, nextRenewalDate } from '@/lib/utils';
+
+const SafeAreaView = styled(RNSafeAreaView);
 
 const SubscriptionDetails = () => {
     const { id } = useLocalSearchParams<{ id: string }>();
+    const router = useRouter();
+    const { subscriptions } = useSubscriptionStore();
+
+    const subscription = useMemo(
+        () => subscriptions.find((item) => item.id === id),
+        [subscriptions, id]
+    );
+
+    // Cancelled subscriptions never renew again, so no computed date should be
+    // shown for them - unlike a plain missing renewalDate, this is a known,
+    // intentional state.
+    const renewal = useMemo(() => {
+        if (!subscription) return null;
+        if (subscription.status?.toLowerCase() === 'cancelled') {
+            return { next: null, daysLeft: null, cancelled: true };
+        }
+        const next = nextRenewalDate(subscription.renewalDate, subscription.billing);
+        return { next, daysLeft: next ? daysUntil(next) : null, cancelled: false };
+    }, [subscription]);
 
     return (
-        <View>
-            <Text>Subscription Details: {id}</Text>
-            <Link href="/">Go back</Link>
-        </View>
+        <SafeAreaView className="flex-1 bg-background">
+            <View className="detail-header">
+                <Pressable className="detail-back" onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Go back">
+                    <Image source={icons.back} className="detail-back-icon" resizeMode="contain" />
+                </Pressable>
+                <Text className="detail-header-title">Details</Text>
+                <View className="detail-header-spacer" />
+            </View>
+
+            {!subscription ? (
+                <View className="detail-missing">
+                    <Text className="detail-missing-text">
+                        This subscription couldn&apos;t be found. It may have been removed, or the link is out of date.
+                    </Text>
+                    <Pressable className="detail-missing-button" onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Go back">
+                        <Text className="detail-missing-button-text">Go back</Text>
+                    </Pressable>
+                </View>
+            ) : (
+                <ScrollView showsVerticalScrollIndicator={false} contentContainerClassName="detail-content">
+                    <View className="detail-hero" style={subscription.color ? { backgroundColor: subscription.color } : undefined}>
+                        <SubscriptionIcon icon={subscription.icon} className="detail-hero-icon" svgSize={48} />
+                        <Text numberOfLines={2} className="detail-name">{subscription.name}</Text>
+                        <View className="detail-price-row">
+                            <Text className="detail-price">{formatCurrency(subscription.price, subscription.currency)}</Text>
+                            <Text className="detail-billing">/ {subscription.billing}</Text>
+                        </View>
+                        <View className="detail-status-badge">
+                            <Text className="detail-status-text">{formatStatusLabel(subscription.status)}</Text>
+                        </View>
+                    </View>
+
+                    <View className="detail-renewal-card">
+                        <Text className="detail-renewal-label">Next renewal</Text>
+                        <Text className="detail-renewal-date">
+                            {renewal?.cancelled
+                                ? 'Not renewing'
+                                : renewal?.next
+                                  ? formatSubscriptionDateTime(renewal.next.toISOString())
+                                  : 'Not provided'}
+                        </Text>
+                        {renewal?.next && renewal.daysLeft !== null && (
+                            <Text className="detail-renewal-days">
+                                {renewal.daysLeft === 0
+                                    ? 'Renews today'
+                                    : renewal.daysLeft === 1
+                                      ? 'Renews in 1 day'
+                                      : `Renews in ${renewal.daysLeft} days`}
+                            </Text>
+                        )}
+                    </View>
+
+                    <View className="insights-card">
+                        <View className="sub-details">
+                            <View className="sub-row">
+                                <View className="sub-row-copy">
+                                    <Text className="sub-label">Category:</Text>
+                                    <Text className="sub-value" numberOfLines={1} ellipsizeMode="tail">
+                                        {subscription.category?.trim() || subscription.plan?.trim() || 'Not provided'}
+                                    </Text>
+                                </View>
+                            </View>
+                            <View className="sub-row">
+                                <View className="sub-row-copy">
+                                    <Text className="sub-label">Payment:</Text>
+                                    <Text className="sub-value" numberOfLines={1} ellipsizeMode="tail">
+                                        {subscription.paymentMethod?.trim() || 'Not provided'}
+                                    </Text>
+                                </View>
+                            </View>
+                            <View className="sub-row">
+                                <View className="sub-row-copy">
+                                    <Text className="sub-label">Started:</Text>
+                                    <Text className="sub-value" numberOfLines={1} ellipsizeMode="tail">
+                                        {subscription.startDate ? formatSubscriptionDateTime(subscription.startDate) : 'Not provided'}
+                                    </Text>
+                                </View>
+                            </View>
+                        </View>
+                    </View>
+                </ScrollView>
+            )}
+        </SafeAreaView>
     )
 }
 

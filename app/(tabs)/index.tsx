@@ -3,7 +3,7 @@ import {FlatList, Image, Text, View} from "react-native";
 import {SafeAreaView as RNSafeAreaView} from "react-native-safe-area-context";
 import { styled } from "nativewind";
 import images from "@/constants/images";
-import {daysUntil, formatCurrency, monthlyPrice, nextRenewalDate} from "@/lib/utils";
+import {daysUntil, formatCurrency, nextRenewalDate, totalsByCurrency} from "@/lib/utils";
 import dayjs from "dayjs";
 import ListHeading from "@/components/ListHeading";
 import UpcomingSubscriptionCard from "@/components/UpcomingSubscriptionCard";
@@ -54,13 +54,12 @@ export default function App() {
             .slice(0, UPCOMING_LIMIT);
     }, [subscriptions]);
 
-    // Committed monthly spend across everything still active.
-    const monthlyTotal = useMemo(
-        () => subscriptions
-            .filter((subscription) => subscription.status?.toLowerCase() === 'active')
-            .reduce((total, subscription) => total + monthlyPrice(subscription), 0),
-        [subscriptions]
-    );
+    // Committed monthly spend across everything still active, one entry per
+    // currency so amounts are never summed across currencies (see
+    // docs/DECISIONS.md). Sorted by size, so [0] is the currency to feature.
+    const currencyTotals = useMemo(() => totalsByCurrency(subscriptions), [subscriptions]);
+    const dominantTotal = currencyTotals[0];
+    const otherTotals = currencyTotals.slice(1);
 
     const nextRenewal = upcoming[0];
 
@@ -87,12 +86,20 @@ export default function App() {
 
                                 <View className="home-balance-row">
                                     <Text className="home-balance-amount">
-                                        {formatCurrency(monthlyTotal)}
+                                        {formatCurrency(dominantTotal?.monthly ?? 0, dominantTotal?.currency)}
                                     </Text>
                                     <Text className="home-balance-date">
                                         {nextRenewal ? dayjs(nextRenewal.renewsAt).format('MM/DD') : '--'}
                                     </Text>
                                 </View>
+
+                                {/* Only present with more than one active currency, so the
+                                    single-currency card (the normal case) is unchanged. */}
+                                {otherTotals.length > 0 && (
+                                    <Text className="home-balance-secondary">
+                                        + {otherTotals.map((total) => formatCurrency(total.monthly, total.currency)).join(' · ')}
+                                    </Text>
+                                )}
                             </View>
 
                             <View className="mb-5">
