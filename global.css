@@ -142,6 +142,14 @@
         @apply mt-2 text-lg font-sans-bold text-primary;
     }
 
+    .search-bar {
+        @apply mb-5 flex-row items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3;
+    }
+
+    .search-input {
+        @apply flex-1 text-base font-sans-medium text-primary;
+    }
+
     .sub-card {
         @apply rounded-2xl border border-border p-4;
     }
