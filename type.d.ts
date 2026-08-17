@@ -32,13 +32,15 @@ declare global {
     interface SubscriptionCardProps extends Omit<Subscription, "id"> {
         expanded: boolean;
         onPress: () => void;
+        /** Action buttons render only where a handler is supplied. */
+        onEditPress?: () => void;
         onCancelPress?: () => void;
-        isCancelling?: boolean;
     }
 
     interface UpcomingSubscription {
         id: string;
-        icon: ImageSourcePropType;
+        /** Same union as Subscription.icon - these are derived from real subscriptions. */
+        icon: ImageSourcePropType | string;
         name: string;
         price: number;
         currency?: string;

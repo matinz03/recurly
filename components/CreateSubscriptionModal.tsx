@@ -2,12 +2,13 @@ import { View, Text, Modal, Pressable, TextInput, KeyboardAvoidingView, Platform
 import { BlurView } from 'expo-blur';
 import DateTimePicker, { DateTimePickerAndroid, type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { Feather } from '@expo/vector-icons';
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import clsx from 'clsx';
 import dayjs, { type Dayjs } from 'dayjs';
 import { icons } from '@/constants/icons';
 import { colors } from '@/constants/theme';
 import { posthog } from '@/lib/posthog';
+import { nextRenewalDate } from '@/lib/utils';
 import { matchSubscriptionIcon } from '@/lib/matchSubscriptionIcon';
 import SubscriptionIcon from '@/components/SubscriptionIcon';
 
@@ -15,6 +16,8 @@ interface CreateSubscriptionModalProps {
     visible: boolean;
     onClose: () => void;
     onSubmit: (subscription: Subscription) => void;
+    /** When set, the form edits this subscription instead of creating one. */
+    subscription?: Subscription | null;
 }
 
 type Frequency = 'Monthly' | 'Yearly';
@@ -35,27 +38,34 @@ const CATEGORY_COLORS: Record<Category, string> = {
     Other: '#d4d4d4',
 };
 
-// The chosen start date can be in the past, so the first renewal is the first
-// occurrence of the billing period that lands after today - not just "start + 1".
-const computeNextRenewalDate = (start: Dayjs, frequency: Frequency) => {
-    const unit = frequency === 'Monthly' ? 'month' : 'year';
-    const now = dayjs();
-    let renewal = start.add(1, unit);
-    while (renewal.isBefore(now)) {
-        renewal = renewal.add(1, unit);
-    }
-    return renewal;
-};
+const isCategory = (value?: string): value is Category =>
+    !!value && (CATEGORIES as string[]).includes(value);
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-const CreateSubscriptionModal = ({ visible, onClose, onSubmit }: CreateSubscriptionModalProps) => {
+const CreateSubscriptionModal = ({ visible, onClose, onSubmit, subscription }: CreateSubscriptionModalProps) => {
+    const isEditing = !!subscription;
+
     const [name, setName] = useState('');
     const [price, setPrice] = useState('');
     const [frequency, setFrequency] = useState<Frequency>('Monthly');
     const [category, setCategory] = useState<Category>('Other');
     const [startDate, setStartDate] = useState<Dayjs>(() => dayjs());
     const [showIosDatePicker, setShowIosDatePicker] = useState(false);
+
+    // Load the edited subscription into the form when the sheet opens. Keyed on
+    // visible as well so reopening the same row discards any half-made edits.
+    useEffect(() => {
+        if (!visible) return;
+        if (subscription) {
+            setName(subscription.name);
+            setPrice(String(subscription.price));
+            setFrequency(subscription.billing?.toLowerCase() === 'yearly' ? 'Yearly' : 'Monthly');
+            setCategory(isCategory(subscription.category) ? subscription.category : 'Other');
+            setStartDate(subscription.startDate ? dayjs(subscription.startDate) : dayjs());
+        }
+        setShowIosDatePicker(false);
+    }, [visible, subscription]);
 
     // Number() alone would accept exponential and hex literals, turning a
     // pasted "1e5" into a $100,000 subscription - so check the shape first.
@@ -128,25 +138,34 @@ const CreateSubscriptionModal = ({ visible, onClose, onSubmit }: CreateSubscript
     const handleSubmit = () => {
         if (!isValidForm) return;
 
+        const trimmedName = name.trim();
         const priceValue = Number(price.trim());
-        const renewalDate = computeNextRenewalDate(startDate, frequency);
+        // The start date can be backdated, so the first renewal is one billing
+        // period after it, rolled forward until it lands in the future.
+        const firstRenewal = startDate.add(1, frequency === 'Monthly' ? 'month' : 'year');
+        const renewalDate = nextRenewalDate(firstRenewal.toISOString(), frequency) ?? firstRenewal;
+
+        // Keep the existing artwork when editing without renaming, so a manual
+        // icon isn't lost to a name that no longer matches anything.
+        const icon = matchedIcon ?? (isEditing && trimmedName === subscription.name ? subscription.icon : icons.plus);
 
         onSubmit({
-            id: `sub-${Date.now()}`,
-            icon: matchedIcon ?? icons.plus,
-            name: name.trim(),
+            ...(subscription ?? {}),
+            id: subscription?.id ?? `sub-${Date.now()}`,
+            icon,
+            name: trimmedName,
             category,
-            status: 'active',
+            status: subscription?.status ?? 'active',
             startDate: startDate.toISOString(),
             price: priceValue,
-            currency: 'USD',
+            currency: subscription?.currency ?? 'USD',
             billing: frequency,
             renewalDate: renewalDate.toISOString(),
             color: CATEGORY_COLORS[category],
         });
 
-        posthog?.capture('subscription_created', {
-            subscription_name: name.trim(),
+        posthog?.capture(isEditing ? 'subscription_updated' : 'subscription_created', {
+            subscription_name: trimmedName,
             subscription_price: priceValue,
             subscription_frequency: frequency,
             subscription_category: category,
@@ -171,7 +190,7 @@ const CreateSubscriptionModal = ({ visible, onClose, onSubmit }: CreateSubscript
                                 <View className="modal-handle" />
                             </View>
                             <View className="modal-header">
-                                <Text className="modal-title">New Subscription</Text>
+                                <Text className="modal-title">{isEditing ? 'Edit Subscription' : 'New Subscription'}</Text>
                                 <Pressable className="modal-close" onPress={handleClose} accessibilityLabel="Close">
                                     <Text className="modal-close-text">✕</Text>
                                 </Pressable>
@@ -272,7 +291,7 @@ const CreateSubscriptionModal = ({ visible, onClose, onSubmit }: CreateSubscript
                                 onPress={handleSubmit}
                                 disabled={!isValidForm}
                             >
-                                <Text className="auth-button-text">Create Subscription</Text>
+                                <Text className="auth-button-text">{isEditing ? 'Save Changes' : 'Create Subscription'}</Text>
                             </Pressable>
                         </ScrollView>
                     </AnimatedPressable>

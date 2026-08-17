@@ -1,30 +1,68 @@
 import "@/global.css"
-import {FlatList, Image, Pressable, Text, View} from "react-native";
+import {FlatList, Image, Text, View} from "react-native";
 import {SafeAreaView as RNSafeAreaView} from "react-native-safe-area-context";
 import { styled } from "nativewind";
 import images from "@/constants/images";
-import {HOME_BALANCE, UPCOMING_SUBSCRIPTIONS} from "@/constants/data";
-import {icons} from "@/constants/icons";
-import {formatCurrency} from "@/lib/utils";
+import {daysUntil, formatCurrency, monthlyPrice, nextRenewalDate} from "@/lib/utils";
 import dayjs from "dayjs";
 import ListHeading from "@/components/ListHeading";
 import UpcomingSubscriptionCard from "@/components/UpcomingSubscriptionCard";
 import SubscriptionCard from "@/components/SubscriptionCard";
 import CreateSubscriptionModal from "@/components/CreateSubscriptionModal";
-import {useState} from "react";
+import AddSubscriptionButton from "@/components/AddSubscriptionButton";
+import {useMemo, useState} from "react";
+import { useRouter } from "expo-router";
 import { useUser } from '@clerk/expo';
 import { useSubscriptionStore } from "@/lib/subscriptionStore";
 import { useExpandedSubscription } from "@/lib/useExpandedSubscription";
 const SafeAreaView = styled(RNSafeAreaView);
 
+/** How many renewals the Upcoming carousel shows. */
+const UPCOMING_LIMIT = 5;
+
 export default function App() {
     const { user } = useUser();
+    const router = useRouter();
     const [isCreateModalVisible, setIsCreateModalVisible] = useState(false);
     const { subscriptions, addSubscription } = useSubscriptionStore();
     const { expandedId, toggleExpanded } = useExpandedSubscription();
 
     // Get user display name: firstName, fullName, or email
     const displayName = user?.firstName || user?.fullName || user?.emailAddresses[0]?.emailAddress || 'User';
+
+    // Derived from the store rather than a static list, so anything created or
+    // edited shows up here immediately. Cancelled plans won't renew, so they're
+    // excluded. Rather than a fixed window (which is empty whenever nothing
+    // renews that week) this shows the soonest few renewals.
+    const upcoming = useMemo(() => {
+        return subscriptions
+            .filter((subscription) => subscription.status?.toLowerCase() !== 'cancelled')
+            .flatMap((subscription) => {
+                const next = nextRenewalDate(subscription.renewalDate, subscription.billing);
+                if (!next) return [];
+                return [{
+                    id: subscription.id,
+                    icon: subscription.icon,
+                    name: subscription.name,
+                    price: subscription.price,
+                    currency: subscription.currency,
+                    daysLeft: daysUntil(next),
+                    renewsAt: next.valueOf(),
+                }];
+            })
+            .sort((a, b) => a.renewsAt - b.renewsAt)
+            .slice(0, UPCOMING_LIMIT);
+    }, [subscriptions]);
+
+    // Committed monthly spend across everything still active.
+    const monthlyTotal = useMemo(
+        () => subscriptions
+            .filter((subscription) => subscription.status?.toLowerCase() === 'active')
+            .reduce((total, subscription) => total + monthlyPrice(subscription), 0),
+        [subscriptions]
+    );
+
+    const nextRenewal = upcoming[0];
 
     return (
         <SafeAreaView className="flex-1 bg-background p-5">
@@ -42,30 +80,29 @@ export default function App() {
                                     />
                                     <Text className="home-user-name">{displayName}</Text>
                                 </View>
-
-                                <Pressable className="home-add-icon" onPress={() => setIsCreateModalVisible(true)} accessibilityLabel="Add subscription">
-                                    <Image source={icons.add} className="home-add-icon-glyph" />
-                                </Pressable>
                             </View>
 
                             <View className="home-balance-card">
-                                <Text className="home-balance-label">Balance</Text>
+                                <Text className="home-balance-label">Monthly spend</Text>
 
                                 <View className="home-balance-row">
                                     <Text className="home-balance-amount">
-                                        {formatCurrency(HOME_BALANCE.amount)}
+                                        {formatCurrency(monthlyTotal)}
                                     </Text>
                                     <Text className="home-balance-date">
-                                        {dayjs(HOME_BALANCE.nextRenewalDate).format('MM/DD')}
+                                        {nextRenewal ? dayjs(nextRenewal.renewsAt).format('MM/DD') : '--'}
                                     </Text>
                                 </View>
                             </View>
 
                             <View className="mb-5">
-                                <ListHeading title="Upcoming" />
+                                <ListHeading
+                                    title="Upcoming"
+                                    onPress={() => router.push('/(tabs)/subscriptions?sort=renewal')}
+                                />
 
                                 <FlatList
-                                    data={UPCOMING_SUBSCRIPTIONS}
+                                    data={upcoming}
                                     renderItem={({ item }) => (<UpcomingSubscriptionCard {...item} />)}
                                     keyExtractor={(item) => item.id}
                                     horizontal
@@ -74,7 +111,10 @@ export default function App() {
                                 />
                             </View>
 
-                            <ListHeading title="All Subscriptions" />
+                            <ListHeading
+                                title="All Subscriptions"
+                                onPress={() => router.push('/(tabs)/subscriptions')}
+                            />
                         </>
                     }
                     data={subscriptions}
@@ -90,8 +130,10 @@ export default function App() {
                     ItemSeparatorComponent={() => <View className="h-4" />}
                     showsVerticalScrollIndicator={false}
                     ListEmptyComponent={<Text className="home-empty-state">No subscriptions yet.</Text>}
-                    contentContainerClassName="pb-18"
+                    contentContainerClassName="pb-30"
                 />
+
+                <AddSubscriptionButton onPress={() => setIsCreateModalVisible(true)} />
 
                 <CreateSubscriptionModal
                     visible={isCreateModalVisible}

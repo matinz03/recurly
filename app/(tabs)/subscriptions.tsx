@@ -1,31 +1,73 @@
-import { useMemo, useState } from 'react';
-import { FlatList, Image, Keyboard, Pressable, Text, TextInput, View } from 'react-native';
+import { useCallback, useMemo, useState } from 'react';
+import { Alert, FlatList, Keyboard, Pressable, Text, TextInput, View } from 'react-native';
 import { SafeAreaView as RNSafeAreaView } from "react-native-safe-area-context";
+import { useLocalSearchParams } from 'expo-router';
 import { styled } from "nativewind";
 import { Feather } from '@expo/vector-icons';
 import { colors } from "@/constants/theme";
-import { icons } from "@/constants/icons";
 import SubscriptionCard from "@/components/SubscriptionCard";
 import CreateSubscriptionModal from "@/components/CreateSubscriptionModal";
+import AddSubscriptionButton from "@/components/AddSubscriptionButton";
+import { nextRenewalDate } from "@/lib/utils";
 import { useSubscriptionStore } from "@/lib/subscriptionStore";
 import { useExpandedSubscription } from "@/lib/useExpandedSubscription";
 
 const SafeAreaView = styled(RNSafeAreaView);
 
 const Subscriptions = () => {
+    // Set by Home's "View all" on the Upcoming heading.
+    const { sort } = useLocalSearchParams<{ sort?: string }>();
+
     const [query, setQuery] = useState('');
-    const [isCreateModalVisible, setIsCreateModalVisible] = useState(false);
-    const { subscriptions, addSubscription } = useSubscriptionStore();
+    const [editing, setEditing] = useState<Subscription | null>(null);
+    const [isModalVisible, setIsModalVisible] = useState(false);
+    const { subscriptions, addSubscription, updateSubscription, cancelSubscription } = useSubscriptionStore();
     const { expandedId, toggleExpanded } = useExpandedSubscription();
 
-    const filteredSubscriptions = useMemo(() => {
+    const visibleSubscriptions = useMemo(() => {
         const normalizedQuery = query.trim().toLowerCase();
-        if (!normalizedQuery) return subscriptions;
+        const matches = normalizedQuery
+            ? subscriptions.filter(({ name, category, plan }) =>
+                  [name, category, plan].some((field) => field?.toLowerCase().includes(normalizedQuery))
+              )
+            : subscriptions;
 
-        return subscriptions.filter(({ name, category, plan }) =>
-            [name, category, plan].some((field) => field?.toLowerCase().includes(normalizedQuery))
+        if (sort !== 'renewal') return matches;
+
+        return [...matches].sort((a, b) => {
+            const aNext = nextRenewalDate(a.renewalDate, a.billing);
+            const bNext = nextRenewalDate(b.renewalDate, b.billing);
+            if (!aNext) return 1;
+            if (!bNext) return -1;
+            return aNext.valueOf() - bNext.valueOf();
+        });
+    }, [query, subscriptions, sort]);
+
+    const openCreate = useCallback(() => {
+        setEditing(null);
+        setIsModalVisible(true);
+    }, []);
+
+    const openEdit = useCallback((subscription: Subscription) => {
+        Keyboard.dismiss();
+        setEditing(subscription);
+        setIsModalVisible(true);
+    }, []);
+
+    const confirmCancel = useCallback((subscription: Subscription) => {
+        Alert.alert(
+            `Cancel ${subscription.name}?`,
+            'It stays in your list marked as cancelled and stops counting toward your spend.',
+            [
+                { text: 'Keep it', style: 'cancel' },
+                {
+                    text: 'Cancel subscription',
+                    style: 'destructive',
+                    onPress: () => cancelSubscription(subscription.id),
+                },
+            ]
         );
-    }, [query, subscriptions]);
+    }, [cancelSubscription]);
 
     return (
         <SafeAreaView className="flex-1 bg-background p-5">
@@ -52,13 +94,12 @@ const Subscriptions = () => {
                 className="flex-1"
                 ListHeaderComponent={
                     <View className="list-head">
-                        <Text className="list-title">Subscriptions</Text>
-                        <Pressable className="home-add-icon" onPress={() => setIsCreateModalVisible(true)} accessibilityLabel="Add subscription">
-                            <Image source={icons.add} className="home-add-icon-glyph" />
-                        </Pressable>
+                        <Text className="list-title">
+                            {sort === 'renewal' ? 'By next renewal' : 'Subscriptions'}
+                        </Text>
                     </View>
                 }
-                data={filteredSubscriptions}
+                data={visibleSubscriptions}
                 keyExtractor={(item) => item.id}
                 renderItem={({ item }) => (
                     <SubscriptionCard
@@ -68,6 +109,8 @@ const Subscriptions = () => {
                             Keyboard.dismiss();
                             toggleExpanded(item.id);
                         }}
+                        onEditPress={() => openEdit(item)}
+                        onCancelPress={() => confirmCancel(item)}
                     />
                 )}
                 extraData={expandedId}
@@ -81,13 +124,16 @@ const Subscriptions = () => {
                 // the window, so adding our own spacer would double-count it.
                 automaticallyAdjustKeyboardInsets
                 ListEmptyComponent={<Text className="home-empty-state">No subscriptions match your search.</Text>}
-                contentContainerClassName="pb-18"
+                contentContainerClassName="pb-30"
             />
 
+            <AddSubscriptionButton onPress={openCreate} />
+
             <CreateSubscriptionModal
-                visible={isCreateModalVisible}
-                onClose={() => setIsCreateModalVisible(false)}
-                onSubmit={addSubscription}
+                visible={isModalVisible}
+                subscription={editing}
+                onClose={() => setIsModalVisible(false)}
+                onSubmit={editing ? updateSubscription : addSubscription}
             />
         </SafeAreaView>
     )

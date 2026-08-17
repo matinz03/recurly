@@ -4,7 +4,9 @@ import {formatCurrency, formatStatusLabel, formatSubscriptionDateTime} from "@/l
 import SubscriptionIcon from "@/components/SubscriptionIcon";
 import clsx from "clsx";
 
-const SubscriptionCard = ({ name, price, currency, icon, billing, color, category, plan, renewalDate, expanded, onPress, paymentMethod, startDate, status}: SubscriptionCardProps) => {
+const SubscriptionCard = ({ name, price, currency, icon, billing, color, category, plan, renewalDate, expanded, onPress, onEditPress, onCancelPress, paymentMethod, startDate, status}: SubscriptionCardProps) => {
+    const isCancelled = status?.toLowerCase() === 'cancelled';
+
     return (
         <Pressable onPress={onPress} className={clsx('sub-card', expanded ? 'sub-card-expanded' : 'bg-card')} style={!expanded && color ? { backgroundColor: color } : undefined}>
             <View className="sub-head">
@@ -60,6 +62,29 @@ const SubscriptionCard = ({ name, price, currency, icon, billing, color, categor
                             </View>
                         </View>
                     </View>
+
+                    {/* Only rendered where handlers are wired up, so the Home
+                        list stays read-only. */}
+                    {(onEditPress || onCancelPress) && (
+                        <View className="sub-actions">
+                            {onEditPress && (
+                                <Pressable className="sub-action" onPress={onEditPress} accessibilityLabel={`Edit ${name}`}>
+                                    <Text className="sub-action-text">Edit</Text>
+                                </Pressable>
+                            )}
+                            {onCancelPress && (
+                                <Pressable
+                                    className={clsx('sub-cancel flex-1', isCancelled && 'sub-cancel-disabled')}
+                                    onPress={onCancelPress}
+                                    disabled={isCancelled}
+                                    accessibilityLabel={`Cancel ${name}`}
+                                    accessibilityState={{ disabled: isCancelled }}
+                                >
+                                    <Text className="sub-cancel-text">{isCancelled ? 'Cancelled' : 'Cancel'}</Text>
+                                </Pressable>
+                            )}
+                        </View>
+                    )}
                 </View>
             )}
         </Pressable>

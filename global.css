@@ -131,7 +131,7 @@
     }
 
     .upcoming-icon {
-        @apply size-14;
+        @apply size-14 items-center justify-center rounded-lg bg-background;
     }
 
     .upcoming-price {
@@ -236,6 +236,103 @@
 
     .home-empty-state {
         @apply py-4 text-sm font-sans-medium text-black/60;
+    }
+
+    /* `bottom` is set at runtime from the safe-area insets. */
+    .fab {
+        @apply absolute right-0 size-14 items-center justify-center rounded-full bg-accent shadow-lg shadow-black/25;
+    }
+
+    .fab-glyph {
+        @apply size-7;
+    }
+
+    .sub-actions {
+        @apply mt-2 flex-row gap-3;
+    }
+
+    .sub-action {
+        @apply flex-1 items-center rounded-full border border-primary/20 py-4;
+    }
+
+    .sub-action-text {
+        @apply font-sans-bold text-primary;
+    }
+
+    .insights-scroll {
+        @apply flex-1;
+    }
+
+    .insights-content {
+        @apply gap-6 pb-30;
+    }
+
+    .insights-summary-row {
+        @apply flex-row gap-4;
+    }
+
+    .insights-stat {
+        @apply flex-1 gap-1 rounded-2xl border border-border bg-card p-4;
+    }
+
+    .insights-stat-label {
+        @apply text-xs font-sans-semibold uppercase tracking-[1px] text-muted-foreground;
+    }
+
+    .insights-stat-value {
+        @apply text-2xl font-sans-extrabold text-primary;
+    }
+
+    .insights-stat-meta {
+        @apply text-xs font-sans-medium text-muted-foreground;
+    }
+
+    .insights-card {
+        @apply gap-4 rounded-2xl border border-border bg-card p-4;
+    }
+
+    .insights-card-title {
+        @apply text-lg font-sans-bold text-primary;
+    }
+
+    .insights-row {
+        @apply gap-2;
+    }
+
+    .insights-row-head {
+        @apply flex-row items-baseline justify-between gap-3;
+    }
+
+    .insights-row-label {
+        @apply shrink text-base font-sans-semibold text-primary;
+    }
+
+    .insights-row-value {
+        @apply shrink-0 text-base font-sans-bold text-primary;
+    }
+
+    .insights-track {
+        @apply h-2 overflow-hidden rounded-full bg-muted;
+    }
+
+    .insights-fill {
+        @apply h-full rounded-full bg-accent;
+    }
+
+    .insights-status-row {
+        @apply flex-row justify-between;
+    }
+
+    .insights-status {
+        @apply items-center gap-1;
+    }
+
+    .insights-status-value {
+        @apply text-xl font-sans-extrabold text-primary;
+    }
+
+    .insights-status-label {
+        @apply text-xs font-sans-semibold text-muted-foreground;
     }
 
     .auth-safe-area {
