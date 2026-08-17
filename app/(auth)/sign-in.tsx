@@ -1,19 +1,30 @@
 import { View, Text, TextInput, Pressable, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { Link, useRouter, type Href } from 'expo-router';
-import { useSignIn } from '@clerk/expo';
+import { useSignIn, useSSO } from '@clerk/expo';
 import { useState } from 'react';
 import { SafeAreaView as RNSafeAreaView } from 'react-native-safe-area-context';
 import { styled } from 'nativewind';
+import { AntDesign } from '@expo/vector-icons';
+import { colors } from '@/constants/theme';
 
 const SafeAreaView = styled(RNSafeAreaView);
 
+const SSO_PROVIDERS = [
+    { strategy: 'oauth_google', icon: 'google', label: 'Google' },
+    { strategy: 'oauth_apple', icon: 'apple', label: 'Apple' },
+    { strategy: 'oauth_github', icon: 'github', label: 'GitHub' },
+] as const;
+
 const SignIn = () => {
     const { signIn, errors, fetchStatus } = useSignIn();
+    const { startSSOFlow } = useSSO();
     const router = useRouter();
 
     const [emailAddress, setEmailAddress] = useState('');
     const [password, setPassword] = useState('');
     const [code, setCode] = useState('');
+    const [ssoStrategy, setSsoStrategy] = useState<string | null>(null);
+    const [ssoError, setSsoError] = useState<string | null>(null);
 
     // Validation states
     const [emailTouched, setEmailTouched] = useState(false);
@@ -67,6 +78,24 @@ const SignIn = () => {
             }
         } else {
             console.error('Sign-in attempt not complete:', signIn);
+        }
+    };
+
+    const handleSSO = async (strategy: (typeof SSO_PROVIDERS)[number]['strategy']) => {
+        setSsoError(null);
+        setSsoStrategy(strategy);
+
+        try {
+            const { createdSessionId, setActive } = await startSSOFlow({ strategy });
+
+            if (createdSessionId && setActive) {
+                await setActive({ session: createdSessionId });
+            }
+        } catch (err) {
+            console.error(JSON.stringify(err, null, 2));
+            setSsoError('Something went wrong. Please try again.');
+        } finally {
+            setSsoStrategy(null);
         }
     };
 
@@ -262,6 +291,29 @@ const SignIn = () => {
                                         {fetchStatus === 'fetching' ? 'Signing In...' : 'Sign In'}
                                     </Text>
                                 </Pressable>
+
+                                {/* SSO Providers */}
+                                <View className="auth-divider-row">
+                                    <View className="auth-divider-line" />
+                                    <Text className="auth-divider-text">Or continue with</Text>
+                                    <View className="auth-divider-line" />
+                                </View>
+
+                                {ssoError && <Text className="auth-error">{ssoError}</Text>}
+
+                                <View className="flex-row gap-3">
+                                    {SSO_PROVIDERS.map(({ strategy, icon, label }) => (
+                                        <Pressable
+                                            key={strategy}
+                                            className="flex-1 items-center justify-center rounded-2xl border border-border bg-background py-4"
+                                            onPress={() => handleSSO(strategy)}
+                                            disabled={ssoStrategy !== null}
+                                            accessibilityLabel={`Continue with ${label}`}
+                                        >
+                                            <AntDesign name={icon} size={22} color={colors.primary} />
+                                        </Pressable>
+                                    ))}
+                                </View>
                             </View>
                         </View>
 
