@@ -37,14 +37,15 @@ const nameCandidates = (name: string) => {
  * hits rather than scans, so this is cheap enough to call on every keystroke.
  */
 export const matchSubscriptionIcon = (name: string): ImageSourcePropType | string | null => {
-    const candidates = nameCandidates(name);
-
-    for (const candidate of candidates) {
+    // Both maps are consulted per candidate rather than one map at a time, so
+    // the most specific name wins overall. Sweeping the bundled map across every
+    // candidate first meant "GitHub Copilot" matched the bundled GitHub mark on
+    // its second word before the generated Copilot mark on its full name.
+    // Within a single candidate the bundled asset still comes first.
+    for (const candidate of nameCandidates(name)) {
         const localKey = LOCAL_BRAND_ICONS[candidate];
         if (localKey) return icons[localKey];
-    }
 
-    for (const candidate of candidates) {
         const brandIcon = BRAND_ICONS[candidate];
         if (brandIcon) {
             return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="#${brandIcon.hex}" d="${brandIcon.path}"/></svg>`;

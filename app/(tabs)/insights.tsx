@@ -5,13 +5,12 @@ import { useMemo } from 'react';
 import ListHeading from '@/components/ListHeading';
 import Money from '@/components/Money';
 import HydrationGate from '@/components/HydrationGate';
-import { formatCurrency, monthlyPrice, totalsByCurrency } from '@/lib/utils';
+import { formatCurrency } from '@/lib/utils';
+import { computeInsights } from '@/lib/insights';
 import { useSubscriptionStore } from '@/lib/subscriptionStore';
 
 const SafeAreaView = styled(RNSafeAreaView);
 
-const TOP_LIMIT = 5;
-const STATUSES = ['active', 'paused', 'cancelled'] as const;
 
 /** Stable reference so the hydration fallback can't bust useMemo deps. */
 const NO_SUBSCRIPTIONS: Subscription[] = [];
@@ -27,62 +26,7 @@ const Insights = () => {
     // totals - don't compute anything until AsyncStorage has resolved.
     const subscriptions = hasHydrated ? stored : NO_SUBSCRIPTIONS;
 
-    const insights = useMemo(() => {
-        // Only active plans are money you're actually committed to; paused and
-        // cancelled ones would inflate every total.
-        const active = subscriptions.filter((s) => s.status?.toLowerCase() === 'active');
-
-        // Never sum across currencies (see docs/DECISIONS.md). The stat tiles
-        // and breakdowns below are scoped to the single largest currency;
-        // anything else active is called out in otherTotals rather than
-        // silently blended into the totals.
-        const totals = totalsByCurrency(subscriptions);
-        const dominant = totals[0];
-        const currency = dominant?.currency ?? 'USD';
-        const otherTotals = totals.slice(1);
-        const dominantActive = active.filter((s) => (s.currency ?? 'USD') === currency);
-
-        const monthlyTotal = dominant?.monthly ?? 0;
-
-        const byCategory = new Map<string, number>();
-        for (const subscription of dominantActive) {
-            const key = subscription.category?.trim() || subscription.plan?.trim() || 'Uncategorised';
-            byCategory.set(key, (byCategory.get(key) ?? 0) + monthlyPrice(subscription));
-        }
-
-        const categories = [...byCategory.entries()]
-            .map(([label, amount]) => ({ label, amount }))
-            .sort((a, b) => b.amount - a.amount);
-
-        const top = [...dominantActive]
-            .map((s) => ({ id: s.id, name: s.name, amount: monthlyPrice(s), billing: s.billing }))
-            .sort((a, b) => b.amount - a.amount)
-            .slice(0, TOP_LIMIT);
-
-        // Deliberately counts every subscription, not just the dominant
-        // currency's. Counts aren't money, so there's nothing to mix - and
-        // scoping them hid records entirely: `currency` is derived from active
-        // subscriptions only, so an account whose plans are all cancelled in
-        // EUR fell back to USD and reported zero of everything. The card is
-        // labelled as covering all currencies so it can't be read as
-        // contradicting the scoped totals above.
-        const counts = STATUSES.map((status) => ({
-            status,
-            count: subscriptions.filter((s) => s.status?.toLowerCase() === status).length,
-        }));
-
-        return {
-            currency,
-            monthlyTotal,
-            yearlyTotal: monthlyTotal * 12,
-            activeCount: dominantActive.length,
-            averageCost: dominantActive.length ? monthlyTotal / dominantActive.length : 0,
-            categories,
-            top,
-            counts,
-            otherTotals,
-        };
-    }, [subscriptions]);
+    const insights = useMemo(() => computeInsights(subscriptions), [subscriptions]);
 
     // Bars are drawn relative to the largest row so the smallest is still visible.
     const largestCategory = insights.categories[0]?.amount ?? 0;

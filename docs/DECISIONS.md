@@ -148,25 +148,44 @@ has no undo. Users reasonably assume Cancel deletes, so the confirmation copy
 contrasts them explicitly, and Delete is deliberately the *least* prominent
 control on the card rather than the most.
 
-## Expand animation uses LayoutAnimation, not Reanimated
+## Expand animation is a measured-height accordion
 
-Animating a card open means animating content of unknown height. `LayoutAnimation`
-does that without measuring anything; Reanimated would mean measuring, or a
-worklet-driven height, for a 220ms ease.
+Animating a card open means animating content of unknown height. Three
+approaches were tried on device, in this order:
 
-Reanimated is installed but unused, and `babel-preset-expo` already auto-injects
-`react-native-worklets/plugin`, so it *would* have worked — the deciding factor
-was the static web export gate. `LayoutAnimation` is core RN with a no-op web
-shim; Reanimated's web runtime was an unnecessary unknown to introduce for this.
+1. **`LayoutAnimation`.** No measuring needed, core RN, no-op web shim. But under
+   the new architecture (`newArchEnabled: true`) RN's own source says layout
+   animations are "unconditionally enabled for Android, and conditionally enabled
+   on iOS (pending fully shipping)" - and in practice the card barely animated on
+   Android either.
+2. **Reanimated `entering`/`exiting` on the body.** Opening looked right; closing
+   did not. `exiting` detaches the view from layout while it fades, so the card
+   reflowed to its collapsed height immediately and every row below snapped up
+   while the body was still moving. Matching the durations didn't help, because
+   the container was never animating in the first place.
+3. **What's there now.** The body stays mounted, its natural height is measured
+   with `onLayout`, and a shared value interpolates `height` and `opacity`
+   between 0 and that height. Both halves are on the same clock in both
+   directions.
 
-Caveat worth knowing: under the new architecture (`newArchEnabled: true`), RN's
-own source says LayoutAnimations are "unconditionally enabled for Android, and
-conditionally enabled on iOS (pending fully shipping)". So on iOS the animation
-may simply not play — the card snaps open as it did before. It degrades, it
-doesn't break.
+Two things about the current version are load-bearing:
 
-Reduce-motion is honoured, read from a ref for the same synchronous-read reason
-the expanded id is.
+- **The measured child is absolutely positioned.** As a normal-flow child it
+  inherits the animated height as its own constraint, so while collapsed it
+  measured 0 and the card could never open at all. That shipped once.
+- **`.sub-body` uses `pt-6`, not `mt-6`.** A top margin sits outside the measured
+  box, offsetting the content below the animated height and clipping the last
+  row.
+
+The body is always mounted, so it's also taken out of the accessibility tree and
+out of touch handling while collapsed (`accessibilityElementsHidden`,
+`importantForAccessibility`, `pointerEvents`) - otherwise a screen reader would
+read hidden rows and taps would land on invisible buttons.
+
+Reduce-motion is honoured via `ReduceMotion.System`.
+
+Reanimated's web runtime was the original reason to avoid it, given the static
+export gate. The export still passes; the gate catches it if that changes.
 
 ## Dark mode follows the OS, via CSS variables, not a `.dark` class
 
@@ -345,3 +364,81 @@ Related earlier causes, all now covered: npm 10 (Node 20) and npm 11 (Node 24)
 resolve optional and peer deps differently, so `.nvmrc` pins the version CI
 uses; and platform-specific optional binaries have to be present for every
 platform, not just the one that generated the file.
+
+## Confirmations are a themed dialog, not `Alert.alert`
+
+`Alert.alert` renders an OS dialog with no styling surface at all: it can't
+follow the palette, the type or the corner treatment, and on Android it looks
+like a different product entirely. Every destructive confirmation - cancel,
+delete, clear data - goes through `components/ConfirmDialog.tsx`, which reuses
+the same sheet vocabulary as the rest of the app.
+
+It's controlled rather than promise-based on purpose: the caller owns which
+action is pending, so the dialog can't get out of step with it. On the
+Subscriptions screen that's a single `pendingAction` state covering both cancel
+and delete, which is also what stops two dialogs racing.
+
+The confirm label is always the verb ("Delete", "Clear data"), never "OK", so the
+button says what will happen rather than agreeing with a question.
+
+## Payment details are a label and four digits, and nothing more
+
+A subscription records which card paid for it, because "which card is this on"
+is a real question when you're auditing spend. It records a **name** for the card
+and optionally its **last four digits** - never a full number, never an expiry,
+never a CVC. Storing more would turn a local list of subscriptions into a
+payment-data problem, with everything that follows from that.
+
+The label is free text, so it is validated: anything containing twelve or more
+digits after separators are stripped is rejected outright, with an inline message
+explaining what to enter instead. Without that, a pasted card number was
+persisted exactly as typed. `containsCardNumber` in `lib/utils.ts` is the check;
+the floor sits below the shortest real PAN (13 digits) to leave no room.
+
+## An existing subscription keeps the currency it was priced in
+
+Amounts are entered in the base currency chosen in Settings, and new records
+adopt it. Editing an existing record does **not**: `resolveSubscriptionCurrency`
+keeps whatever it was priced in.
+
+Otherwise changing the preference from USD to EUR and then editing an unrelated
+field would silently re-denominate a stored amount - USD 10 becomes EUR 10 with
+no conversion - which also contradicts what Settings tells the user, that
+changing the preference doesn't convert saved amounts.
+
+There is no FX conversion anywhere in the app (see the totals decision above),
+so a re-denominated amount is unrecoverable: nothing knows what it used to be.
+
+## Startup waits for the theme preference, not just fonts and auth
+
+`useThemePreference` can't apply the saved light/system/dark choice until
+preferences come back from AsyncStorage. Rendering before then shows one frame in
+the OS theme and flips - clearly visible on a cold start with a dark preference
+on a light device.
+
+So `hasHydrated` from the preferences store joins fonts and auth in the
+splash-hide condition and in the render gate. It's the same reason screens gate
+on the subscription store's `hasHydrated`, one level up.
+
+## Borders use a real token, not an opacity modifier
+
+`border-foreground/25` looks like the obvious way to get a hairline. Tailwind
+compiles it to a literal fallback immediately overridden by
+`color-mix(in oklab, ...)`, so the rendered colour depends on a runtime colour
+function - and in light mode the result was nothing at all, while dark mode
+worked. "View all" and the carousel cards both lost their borders that way.
+
+`--color-border-strong` is a real token with a value per theme, so the compiled
+CSS is a single literal `border-color: var(--color-border-strong)`. Any border
+that needs to be visibly there uses it. Verified by reading the compiled output,
+not by assuming.
+
+## Insights aggregation lives in `lib/insights.ts`, not in the screen
+
+The multi-currency rules are the most bug-prone logic in the app - two
+regressions have shipped in them - and while the maths sat inside a `useMemo` in
+the screen, none of it could be tested without rendering. `computeInsights` is
+pure, takes the subscription list, and returns every figure the screen draws.
+
+The screen keeps only presentation: the bar widths relative to the largest row,
+and the hydration gate.

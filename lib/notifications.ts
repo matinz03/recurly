@@ -123,7 +123,8 @@ interface ReminderTiming {
  * "immediately" would misrepresent the promise of a heads-up before the
  * charge).
  */
-const reminderTimingFor = (subscription: Subscription, leadDays: number): ReminderTiming | null => {
+/** Exported for tests - the scheduling entry points need a device. */
+export const reminderTimingFor = (subscription: Subscription, leadDays: number): ReminderTiming | null => {
     const renewalDate = nextRenewalDate(subscription.renewalDate, subscription.billing);
     if (!renewalDate) return null;
 

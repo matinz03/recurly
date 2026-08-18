@@ -1,13 +1,46 @@
 # Recurrly
 
-Subscription tracker built with Expo SDK 54, expo-router, NativeWind v5,
-Clerk auth, zustand, and PostHog.
+A subscription tracker for iOS and Android. Track what you pay for, see when it
+renews, and see where the money actually goes.
 
-Track what you pay for, see when it renews, and see where the money goes.
+Built with Expo SDK 54, expo-router, NativeWind v5, Clerk, zustand and PostHog.
+
+## What it does
+
+**Home** — the month at a glance: total committed spend, the next five renewals
+as a carousel, and a short preview of the list with a link to all of it. Anything
+renewing within a day reads "Today" or "Tomorrow" rather than a count.
+
+**Subscriptions** — the full list, searchable, filterable by status. Tap a card
+to expand it in place for plan, payment method, renewal and start date, plus
+Edit, Pause/Resume, Cancel and Delete. Cancelling marks a subscription; it never
+deletes it, because the record is the history of what you used to pay for.
+
+**Insights** — monthly and yearly totals, average cost, spend by category, and
+the top five by monthly cost. Amounts are never summed across currencies: the
+figures are scoped to your largest currency and anything else is reported
+separately, because the app does no FX conversion and a blended number would be
+meaningless.
+
+**Add / edit** — a drag-to-dismiss sheet. Type a name and it matches a brand icon
+as you go, from bundled art or a generated simple-icons subset. Pick a start date
+from a calendar, past or future. Note which card paid for it — a **name** and
+optionally the **last four digits**, never a full card number.
+
+**Settings** — light / system / dark, base currency, renewal reminders with a
+configurable lead time, and clearing all stored data.
+
+Your subscriptions are stored locally on the device and are never uploaded —
+there is no backend for them. Two services do use the network: Clerk, for
+sign-in, and PostHog, for product analytics.
 
 ## Getting started
 
+Node 24 — pinned in [`.nvmrc`](.nvmrc). npm 10 and npm 11 resolve dependencies
+differently and a lockfile from one fails `npm ci` under the other.
+
 ```bash
+nvm use
 npm install
 ```
 
@@ -24,9 +57,10 @@ without them:
 npx expo start
 ```
 
-Then open in Expo Go, a simulator, or a development build. Note the date picker
-and blur effects are native modules with no web implementation, so the web
-target is only useful for quick layout checks.
+Open in Expo Go, a simulator, or a development build. The date picker, blur and
+notifications are native modules with no useful web implementation, so the web
+target is only good for quick layout checks — and note that local notifications
+don't work in Expo Go at all; they need a development build.
 
 ## Scripts
 
@@ -38,27 +72,46 @@ target is only useful for quick layout checks.
 | `npm test` | Jest (`jest-expo` preset) |
 | `npm run generate:brand-icons` | Regenerate `constants/brandIcons.ts` from simple-icons |
 
-Typecheck with `npx tsc --noEmit -p .`. CI runs all of these on every PR.
+Typecheck with `npx tsc --noEmit -p .`.
+
+On every PR, CI runs `npm ci`, the typecheck, the lint, the tests,
+`npx expo export --platform web`, and a check that `constants/brandIcons.ts`
+still matches its generator.
+
+The web export earns its place: it is the only check that catches a native module
+being evaluated in Node during static prerender, and it has caught two real
+breakages that everything else passed straight through.
+
+**None of it verifies how any of this looks or behaves on a phone** — layout,
+keyboard insets, gestures, animation, or whether a colour reads correctly in
+place. Every one of those has shipped broken here with a fully green check run.
+The tests do cover the colour *logic* (which ink a card picks, and that every
+category value stays on the right side of that threshold); seeing it is still a
+device job.
 
 ## How it fits together
 
 ```text
-app/          expo-router routes — (auth), (tabs), subscriptions/[id]
+app/          expo-router routes — (auth), (tabs), subscriptions/[id], onboarding
 components/   presentational, no data fetching
 constants/    seed data, icon maps, design tokens
-lib/          store, hooks, pure helpers
+lib/          stores, hooks, pure helpers
+test-utils/   shared test fixtures
 scripts/      build-time codegen
-docs/         architecture, decisions, roadmap
+docs/         architecture, decisions, data model, accessibility, roadmap
 ```
 
 `lib/subscriptionStore.ts` is the single source of truth; screens derive from it
-rather than holding their own copies.
+with `useMemo` rather than holding their own copies.
 
 ## Docs
 
-- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — layout, state, styling, conventions
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — layout, state, styling, how a screen is assembled
+- [`docs/DATA-MODEL.md`](docs/DATA-MODEL.md) — the `Subscription` shape, statuses, persistence, the icon round trip
 - [`docs/DECISIONS.md`](docs/DECISIONS.md) — why things are the way they are. **Read
   before "simplifying"** anything that looks redundant; several oddities are
-  load-bearing.
+  load-bearing, and each one is there because it broke once.
+- [`docs/ACCESSIBILITY.md`](docs/ACCESSIBILITY.md) — what's deliberate, and what isn't verified
+- [`docs/CONTRIBUTING.md`](docs/CONTRIBUTING.md) — gates, branches, lockfile refresh, conventions
 - [`docs/ROADMAP.md`](docs/ROADMAP.md) — prioritised backlog and known debt
 - [`AGENTS.md`](AGENTS.md) — invariants that are easy to break silently
