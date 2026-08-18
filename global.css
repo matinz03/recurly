@@ -111,6 +111,21 @@
         @apply size-16 rounded-full;
     }
 
+    .avatar {
+        @apply size-16 rounded-full;
+    }
+
+    /* Terracotta ground with cream ink, the same pairing the accent gets
+       everywhere else. Fixed rather than theme-reactive: the accent darkens in
+       dark mode and cream still clears 4.5:1 on both. */
+    .avatar-fallback {
+        @apply items-center justify-center bg-accent;
+    }
+
+    .avatar-initials {
+        @apply text-xl font-sans-bold text-background;
+    }
+
     .home-user-name {
         @apply ml-4 text-2xl font-sans-bold text-primary;
     }
