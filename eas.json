@@ -4,14 +4,27 @@
     "appVersionSource": "remote"
   },
   "build": {
+    "base": {
+      "env": {
+        "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_test_Zmx5aW5nLW1ha28tMTY3NC5jbGVyay5hY2NvdW50cy5kZXYk",
+        "POSTHOG_PROJECT_TOKEN": "phc_rcDZUHBVFxiWYPirKFTkBB8uXxDRWtahYpZ7yeVh5PDJ",
+        "POSTHOG_HOST": "https://eu.i.posthog.com"
+      }
+    },
     "development": {
+      "extends": "base",
       "developmentClient": true,
       "distribution": "internal"
     },
     "preview": {
-      "distribution": "internal"
+      "extends": "base",
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      }
     },
     "production": {
+      "extends": "base",
       "autoIncrement": true
     }
   },
