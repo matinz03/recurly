@@ -442,3 +442,40 @@ pure, takes the subscription list, and returns every figure the screen draws.
 
 The screen keeps only presentation: the bar widths relative to the largest row,
 and the hydration gate.
+
+## The client keys live in `eas.json`, committed
+
+`eas.json`'s `base` profile carries `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY`,
+`POSTHOG_PROJECT_TOKEN` and `POSTHOG_HOST` as literals, and the other profiles
+extend it. That looks like committed secrets. It isn't:
+
+- A Clerk **publishable** key is designed to ship in clients - that's what the
+  `EXPO_PUBLIC_` prefix means here, and Expo's babel plugin inlines the literal
+  into the JS bundle at build time regardless of where it came from.
+- A PostHog **project** API key (`phc_…`) is the same: it's the value in every
+  web snippet, write-only, and it ships inside the app.
+
+Both are readable by anyone who unzips the APK, so putting them in EAS's secret
+store would protect nothing while costing the ability to read them back.
+
+`.env` is still gitignored and is what local `expo start` reads. It has to be
+duplicated here because EAS Build archives what git tracks, so an ignored `.env`
+never reaches the build server - and the two steps that need these values,
+bundling the JS and evaluating `app.config.js`, both run there. A cloud build
+without them produces an APK that throws
+`Add your Clerk Publishable Key to the .env file` at launch, before any screen
+renders.
+
+The tradeoff accepted: the repo now hardcodes one Clerk instance and one PostHog
+project, so a fork or a second environment edits committed config instead of
+setting a variable. For anything beyond personal test builds, move these to
+`eas env:create --visibility sensitive` and drop the `env` block.
+
+Because the values are inline, no profile needs an `environment` field - that one
+selects which set of server-side EAS variables a build pulls, and there are none
+to pull. If these move to `eas env:create` later, each profile will need it.
+
+`preview` also pins `android.buildType: "apk"`. It's the profile used for
+sideloadable test builds, and while internal distribution produces an APK today,
+a default that later changed to AAB would yield something that can't be installed
+from a GitHub release.
