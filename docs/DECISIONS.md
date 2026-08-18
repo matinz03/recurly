@@ -312,3 +312,17 @@ rather than an accident. The type system has the related gap — one family
 (Plus Jakarta Sans) at four weights doing display and body both, with no
 pairing. Fixing that needs a licensed display face, which is also a choice to
 be made rather than assumed.
+
+## Icon tiles stay light in both themes
+
+Brand marks are drawn for light grounds, so the tile behind them doesn't invert.
+`--color-icon-tile` is cream in light and a dimmed ivory in dark.
+
+It used to reuse `muted`, which in dark is `#6e6151` — a muddy olive that looked
+dirty behind a logo. `muted` is deliberately light for a different reason (fixed
+dark-navy glyphs on it need 3:1), so the two uses needed separating rather than
+retuning one token for both.
+
+Note some bundled PNGs (Adobe) carry their own opaque background, so they will
+look different from the transparent ones whatever this token is. Fixing that
+means replacing the asset.

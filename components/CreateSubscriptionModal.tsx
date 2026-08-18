@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { clsx } from 'clsx';
 import dayjs, { type Dayjs } from 'dayjs';
 import { icons } from '@/constants/icons';
+import { CATEGORIES, CATEGORY_COLORS, isCategory, type Category } from '@/constants/categories';
 import { useThemeColors } from '@/constants/theme';
 import { posthog } from '@/lib/posthog';
 import { findDuplicateSubscriptionByName, nextRenewalDate } from '@/lib/utils';
@@ -24,14 +25,12 @@ interface CreateSubscriptionModalProps {
 }
 
 type Frequency = 'Monthly' | 'Yearly';
-type Category = 'Entertainment' | 'AI Tools' | 'Developer Tools' | 'Design' | 'Productivity' | 'Other';
 type Currency = 'USD' | 'EUR' | 'GBP' | 'CAD' | 'JPY';
 
 // Plain decimal only: digits with at most one decimal point.
 const DECIMAL_PRICE = /^\d*\.?\d+$/;
 
 const FREQUENCIES: Frequency[] = ['Monthly', 'Yearly'];
-const CATEGORIES: Category[] = ['Entertainment', 'AI Tools', 'Developer Tools', 'Design', 'Productivity', 'Other'];
 const CURRENCIES: Currency[] = ['USD', 'EUR', 'GBP', 'CAD', 'JPY'];
 
 // Fixed pastels, not theme tokens - these are data (a category identifier
@@ -40,18 +39,6 @@ const CURRENCIES: Currency[] = ['USD', 'EUR', 'GBP', 'CAD', 'JPY'];
 // dark mode. They stay light in both themes, and SubscriptionCard/[id].tsx
 // paint the ink on top of them with the static light-theme colors for the
 // same reason - see docs/DECISIONS.md.
-const CATEGORY_COLORS: Record<Category, string> = {
-    Entertainment: '#ff6b6b',
-    'AI Tools': '#b8d4e3',
-    'Developer Tools': '#e8def8',
-    Design: '#f5c542',
-    Productivity: '#95e1d3',
-    Other: '#d4d4d4',
-};
-
-const isCategory = (value?: string): value is Category =>
-    !!value && (CATEGORIES as string[]).includes(value);
-
 const isCurrency = (value?: string): value is Currency =>
     !!value && (CURRENCIES as string[]).includes(value);
 

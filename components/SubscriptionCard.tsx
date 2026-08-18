@@ -4,7 +4,8 @@ import {Feather} from '@expo/vector-icons'
 import {formatCurrency, formatStatusLabel, formatSubscriptionDateTime} from "@/lib/utils";
 import SubscriptionIcon from "@/components/SubscriptionIcon";
 import Money from "@/components/Money";
-import {colors, useThemeColors} from "@/constants/theme";
+import {colors, useIsDarkTheme, useThemeColors} from "@/constants/theme";
+import {useCategoryColor} from "@/constants/categories";
 import { clsx } from "clsx";
 
 const SubscriptionCard = ({ name, price, currency, icon, billing, color, category, plan, renewalDate, expanded, onPress, onEditPress, onCancelPress, onDeletePress, onPauseResumePress, paymentMethod, startDate, status}: SubscriptionCardProps) => {
@@ -16,14 +17,19 @@ const SubscriptionCard = ({ name, price, currency, icon, billing, color, categor
     // reactivating it, which is a different action than this one performs.
     const showPauseResume = !!onPauseResumePress && !isCancelled;
 
-    // `color` is the fixed category pastel (CATEGORY_COLORS), not theme - it
-    // stays light in both modes (see docs/DECISIONS.md), so text painted
-    // directly on it uses the static light ink (`colors`, not
-    // `useThemeColors()`) rather than the app's dark-mode ink, or it would
-    // vanish against a light pastel once the app's ink flips light.
-    const onFixedColor = !expanded && !!color;
-    const fixedInkStyle = onFixedColor ? { color: colors.primary } : undefined;
-    const fixedMutedStyle = onFixedColor ? { color: colors.mutedForeground } : undefined;
+    // The category colour now follows the theme (a dark tone in dark mode), so
+    // the card's ground is light only in the light theme. Ink is pinned to the
+    // static light palette just for that case; in dark mode the ground is dark
+    // and the theme's own ivory ink is already correct.
+    // Both hooks called unconditionally - inside the && below they'd be
+    // short-circuited away on some renders, changing hook order.
+    const isDark = useIsDarkTheme();
+    const categoryColor = useCategoryColor();
+
+    const cardColor = categoryColor(category, color);
+    const onLightGround = !expanded && !!cardColor && !isDark;
+    const fixedInkStyle = onLightGround ? { color: colors.primary } : undefined;
+    const fixedMutedStyle = onLightGround ? { color: colors.mutedForeground } : undefined;
 
     const metaText = category?.trim() || plan?.trim() || (renewalDate ? formatSubscriptionDateTime(renewalDate) : '');
 
@@ -35,7 +41,7 @@ const SubscriptionCard = ({ name, price, currency, icon, billing, color, categor
         .join(', ');
 
     return (
-        <View className={clsx('sub-card', expanded ? 'sub-card-expanded' : 'bg-card')} style={!expanded && color ? { backgroundColor: color } : undefined}>
+        <View className={clsx('sub-card', expanded ? 'sub-card-expanded' : 'bg-card')} style={!expanded && cardColor ? { backgroundColor: cardColor } : undefined}>
             {/* The expand/collapse toggle now lives on the head row alone, not
                 the whole card: `accessible` on a wrapper collapses its
                 descendants into one node, so putting it on the outer

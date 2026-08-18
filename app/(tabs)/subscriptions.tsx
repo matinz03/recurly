@@ -209,7 +209,6 @@ const Subscriptions = () => {
                 <Text className="list-title">
                     {sort === 'renewal' ? 'By next renewal' : 'Subscriptions'}
                 </Text>
-                <AddSubscriptionButton onPress={openCreate} />
             </View>
 
             <View className="search-bar">
@@ -328,6 +327,8 @@ const Subscriptions = () => {
                 // override the class's, dropping the tab-bar clearance.
                 contentContainerStyle={{ paddingBottom: spacing[30] + keyboardInset }}
             />
+
+            <AddSubscriptionButton onPress={openCreate} />
 
             <CreateSubscriptionModal
                 visible={isModalVisible}

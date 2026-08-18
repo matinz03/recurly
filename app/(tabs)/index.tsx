@@ -89,26 +89,22 @@ export default function App() {
                     {hasHydrated ? 'Subscriptions loaded' : 'Loading your subscriptions'}
                 </Text>
 
-                {/* Outside the FlatList so it holds its position as the list
-                    scrolls, which is also what lets the add button stay put
-                    while sitting across from the name. */}
-                <View className="home-header">
-                    <View className="home-user">
-                        <Image
-                            source={user?.imageUrl ? { uri: user.imageUrl } : images.avatar}
-                            className="home-avatar"
-                        />
-                        <Text className="home-user-name">{displayName}</Text>
-                    </View>
-                    <AddSubscriptionButton onPress={() => setIsCreateModalVisible(true)} />
-                </View>
-
                 <FlatList
                     // An element, not a function: a new function identity each
                     // render would remount the whole header and reset the
                     // Upcoming carousel's scroll position.
                     ListHeaderComponent={
                         <>
+                            <View className="home-header">
+                                <View className="home-user">
+                                    <Image
+                                        source={user?.imageUrl ? { uri: user.imageUrl } : images.avatar}
+                                        className="home-avatar"
+                                    />
+                                    <Text className="home-user-name">{displayName}</Text>
+                                </View>
+                            </View>
+
                             <View className="home-balance-card">
                                 <Text className="home-balance-label">Monthly spend</Text>
 
@@ -169,6 +165,8 @@ export default function App() {
                     ListEmptyComponent={hasHydrated ? <EmptySubscriptions onAddPress={() => setIsCreateModalVisible(true)} /> : <HydrationGate />}
                     contentContainerClassName="pb-30"
                 />
+
+                <AddSubscriptionButton onPress={() => setIsCreateModalVisible(true)} />
 
                 <CreateSubscriptionModal
                     visible={isCreateModalVisible}

@@ -4,7 +4,8 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { styled } from 'nativewind';
 import { useMemo } from 'react';
 import { icons } from '@/constants/icons';
-import { colors } from '@/constants/theme';
+import { colors, useIsDarkTheme } from '@/constants/theme';
+import { useCategoryColor } from '@/constants/categories';
 import SubscriptionIcon from '@/components/SubscriptionIcon';
 import Money from '@/components/Money';
 import HydrationGate from '@/components/HydrationGate';
@@ -21,6 +22,8 @@ const SubscriptionDetails = () => {
     const { id } = useLocalSearchParams<{ id: string }>();
     const router = useRouter();
     const { subscriptions, hasHydrated } = useSubscriptionStore();
+    const isDark = useIsDarkTheme();
+    const categoryColor = useCategoryColor();
 
     const subscription = useMemo(
         () => subscriptions.find((item) => item.id === id),
@@ -38,6 +41,12 @@ const SubscriptionDetails = () => {
         const next = nextRenewalDate(subscription.renewalDate, subscription.billing);
         return { next, daysLeft: next ? daysUntil(next) : null, cancelled: false };
     }, [subscription]);
+
+    // Dark mode gives the category a dark tone, so the ink override below is
+    // only needed on the light theme's pale ground.
+    const heroColor = categoryColor(subscription?.category, subscription?.color);
+    const heroInk = heroColor && !isDark ? { color: colors.primary } : undefined;
+    const heroMutedInk = heroColor && !isDark ? { color: colors.mutedForeground } : undefined;
 
     return (
         <SafeAreaView className="flex-1 bg-background">
@@ -91,12 +100,12 @@ const SubscriptionDetails = () => {
                         theme - see docs/DECISIONS.md), so the ink on top of it uses
                         the static light-theme colors, never the app's dark-mode ink,
                         or it would vanish against a light pastel in dark mode. */}
-                    <View className="detail-hero" style={subscription.color ? { backgroundColor: subscription.color } : undefined}>
+                    <View className="detail-hero" style={heroColor ? { backgroundColor: heroColor } : undefined}>
                         <SubscriptionIcon icon={subscription.icon} className="detail-hero-icon" svgSize={48} />
-                        <Text numberOfLines={2} className="detail-name" style={subscription.color ? { color: colors.primary } : undefined}>{subscription.name}</Text>
+                        <Text numberOfLines={2} className="detail-name" style={heroInk}>{subscription.name}</Text>
                         <View className="detail-price-row">
-                            <Money value={subscription.price} currency={subscription.currency} className="detail-price" style={subscription.color ? { color: colors.primary } : undefined} />
-                            <Text className="detail-billing" style={subscription.color ? { color: colors.mutedForeground } : undefined}>/ {subscription.billing}</Text>
+                            <Money value={subscription.price} currency={subscription.currency} className="detail-price" style={heroInk} />
+                            <Text className="detail-billing" style={heroMutedInk}>/ {subscription.billing}</Text>
                         </View>
                         <View className="detail-status-badge">
                             <Text className="detail-status-text">{formatStatusLabel(subscription.status)}</Text>

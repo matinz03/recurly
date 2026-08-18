@@ -16,6 +16,7 @@
     --color-success: #16a34a;
     --color-destructive: #dc2626;
     --color-subscription: #8fd1bd;
+    --color-icon-tile: #fff9e3;
 
     --spacing-0: 0px;
     --spacing-1: 4px;
@@ -74,6 +75,7 @@
         --color-success: #4ade80;
         --color-destructive: #ef4444;
         --color-subscription: #33564a;
+        --color-icon-tile: #e7ddc6;
     }
 }
 
@@ -167,7 +169,7 @@
        the surface that keeps it above the 3:1 non-text contrast floor
        against it - see docs/DECISIONS.md. */
     .upcoming-icon {
-        @apply size-14 items-center justify-center rounded-lg bg-background dark:bg-muted;
+        @apply size-14 items-center justify-center rounded-lg bg-icon-tile;
     }
 
     .upcoming-price {
@@ -208,7 +210,7 @@
 
     /* dark:bg-muted - see .upcoming-icon above; same fixed-PNG-fallback reason. */
     .sub-icon {
-        @apply size-16 items-center justify-center rounded-lg bg-background dark:bg-muted;
+        @apply size-16 items-center justify-center rounded-lg bg-icon-tile;
     }
 
     .sub-copy {
@@ -281,11 +283,10 @@
 
     /* Pinned top right, where the add control originally sat, rather than
        scrolling away inside a list header. */
-    /* Inline in a fixed header row rather than absolutely positioned: it has
-       to line up with the user's name / screen title, and absolute positioning
-       against an edge-to-edge screen put it in the status bar. */
+    /* `top`/`right` are set at runtime from the safe-area insets - see the
+       component for why they can't be static. */
     .add-button {
-        @apply size-12 items-center justify-center rounded-full bg-muted;
+        @apply absolute z-10 size-12 items-center justify-center rounded-full bg-muted;
     }
 
     .add-button-glyph {
@@ -653,7 +654,7 @@
 
     /* dark:bg-muted - see .upcoming-icon above; same fixed-PNG-fallback reason. */
     .detail-hero-icon {
-        @apply mb-1 size-20 items-center justify-center rounded-2xl bg-background dark:bg-muted;
+        @apply mb-1 size-20 items-center justify-center rounded-2xl bg-icon-tile;
     }
 
     .detail-name {
