@@ -181,6 +181,15 @@ const Subscriptions = () => {
         <SafeAreaView className="flex-1 bg-background p-5">
             <Text accessibilityLiveRegion="polite" style={SR_ONLY}>{liveStatus}</Text>
 
+            {/* Outside the FlatList so it stays put, and so the pinned add
+                button has a row to sit on rather than overlapping the search
+                field. */}
+            <View className="list-head">
+                <Text className="list-title">
+                    {sort === 'renewal' ? 'By next renewal' : 'Subscriptions'}
+                </Text>
+            </View>
+
             <View className="search-bar">
                 {/* Decorative - the TextInput's own placeholder already says
                     what the field is for. */}
@@ -245,13 +254,6 @@ const Subscriptions = () => {
 
             <FlatList
                 className="flex-1"
-                ListHeaderComponent={
-                    <View className="list-head">
-                        <Text className="list-title">
-                            {sort === 'renewal' ? 'By next renewal' : 'Subscriptions'}
-                        </Text>
-                    </View>
-                }
                 data={visibleSubscriptions}
                 keyExtractor={(item) => item.id}
                 renderItem={({ item }) => (

@@ -111,14 +111,6 @@
         @apply ml-4 text-2xl font-sans-bold text-primary;
     }
 
-    .home-add-icon {
-        @apply size-12 items-center justify-center rounded-full bg-muted;
-    }
-
-    .home-add-icon-glyph {
-        @apply size-6;
-    }
-
     .home-balance-card {
         @apply my-2.5 min-h-50 justify-between gap-5 rounded-bl-4xl rounded-tr-4xl bg-accent p-6;
     }
@@ -287,13 +279,14 @@
         @apply items-center py-10;
     }
 
-    /* `bottom` is set at runtime from the safe-area insets. */
-    .fab {
-        @apply absolute right-0 size-14 items-center justify-center rounded-full bg-accent shadow-lg shadow-black/25;
+    /* Pinned top right, where the add control originally sat, rather than
+       scrolling away inside a list header. */
+    .add-button {
+        @apply absolute right-0 top-0 z-10 size-12 items-center justify-center rounded-full bg-muted;
     }
 
-    .fab-glyph {
-        @apply size-7;
+    .add-button-glyph {
+        @apply size-6;
     }
 
     .sub-actions {
