@@ -97,13 +97,16 @@ describe('persisted round trip', () => {
 
     // resetPreferences is the only way Settings can reset this store without
     // subscriptionStore.ts-style store-file changes being needed here too -
-    // it should undo both the in-memory values and the disk copy.
-    it('resetPreferences restores defaults and clears the persisted copy', async () => {
+    // Reset writes the defaults to disk rather than removing the key. Removing
+    // it can't be sequenced against the write that set() triggers - see
+    // resetPreferences - and a missing key would rehydrate to defaults anyway,
+    // so persisting them reaches the same place deterministically.
+    it('resetPreferences restores defaults and persists them', async () => {
         const useStore = loadStore();
         useStore.getState().setRemindersEnabled(false);
         useStore.getState().setReminderLeadDays(7);
         await flush();
-        expect(await readPersisted()).not.toBeNull();
+        expect((await readPersisted()).state.remindersEnabled).toBe(false);
 
         useStore.getState().resetPreferences();
         await flush();
@@ -111,6 +114,10 @@ describe('persisted round trip', () => {
         const { remindersEnabled, reminderLeadDays } = useStore.getState();
         expect(remindersEnabled).toBe(true);
         expect(reminderLeadDays).toBe(2);
-        expect(await readPersisted()).toBeNull();
+
+        // The defaults survive a reload, rather than a stale non-default value.
+        const persisted = await readPersisted();
+        expect(persisted.state.remindersEnabled).toBe(true);
+        expect(persisted.state.reminderLeadDays).toBe(2);
     });
 });

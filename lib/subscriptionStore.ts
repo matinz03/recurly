@@ -21,6 +21,9 @@ interface SubscriptionStore {
     // Shared by pause and resume: both are just a status write, so the UI
     // decides which direction makes sense from the record's current status.
     setSubscriptionStatus: (id: string, status: SubscriptionStatus) => void;
+    // Wipes every record. Persisting an empty list is deliberately how the
+    // disk copy is cleared too - see the comment on the implementation.
+    clearSubscriptions: () => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -137,6 +140,16 @@ export const useSubscriptionStore = create<SubscriptionStore>()(
                     set((state) => ({
                         subscriptions: state.subscriptions.filter((existing) => existing.id !== id),
                     })),
+
+                // Deliberately does NOT call persist.clearStorage(). That
+                // removes the key without awaiting - its own removeItem call
+                // is fired and dropped - so it races the write that any set()
+                // triggers. Whichever lands last wins, and if the removal
+                // wins, the store rehydrates to the SEED LIST on next launch,
+                // resurrecting subscriptions the user just deleted. Writing an
+                // empty list is a single ordered operation with the same end
+                // state: nothing on disk to restore, nothing in memory.
+                clearSubscriptions: () => set({ subscriptions: [] }),
 
                 setSubscriptionStatus: (id, status) =>
                     set((state) => ({

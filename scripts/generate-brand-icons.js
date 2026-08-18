@@ -1,3 +1,4 @@
+/* global __dirname, Buffer */ // Node script; the Expo lint config has no Node globals.
 /**
  * Generates constants/brandIcons.ts from simple-icons.
  *

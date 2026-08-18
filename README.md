@@ -1,6 +1,6 @@
 # Recurrly
 
-Subscription tracker built with Expo SDK 54, expo-router, NativeWind v4/v5,
+Subscription tracker built with Expo SDK 54, expo-router, NativeWind v5,
 Clerk auth, zustand, and PostHog.
 
 Track what you pay for, see when it renews, and see where the money goes.
@@ -42,7 +42,7 @@ Typecheck with `npx tsc --noEmit -p .`. CI runs all of these on every PR.
 
 ## How it fits together
 
-```
+```text
 app/          expo-router routes — (auth), (tabs), subscriptions/[id]
 components/   presentational, no data fetching
 constants/    seed data, icon maps, design tokens

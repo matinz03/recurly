@@ -6,7 +6,7 @@ adding native surface area — the SDK moves fast and older recipes break.
 
 ## Layout
 
-```
+```text
 app/                    expo-router routes (file = route)
   (auth)/               sign-in, sign-up, layout guard
   (tabs)/               index (home), subscriptions, insights, settings
@@ -31,8 +31,10 @@ Derived values (upcoming renewals, monthly spend, category breakdown) are
 computed with `useMemo` in the screen that needs them, from helpers in
 `lib/utils.ts`. Nothing derived is stored.
 
-> The store is currently in-memory: created and edited subscriptions do not
-> survive an app restart. See ROADMAP.md.
+The store persists to AsyncStorage. Icons are stored as a serialisable
+discriminator rather than the value itself — see DECISIONS.md, and don't
+"simplify" it back. `hasHydrated` tells screens when the persisted data has
+actually landed; render before that and you're showing the seed list.
 
 ## Styling
 
@@ -73,6 +75,10 @@ which branches on the type. A bare `Image` will fail on SVG-string icons.
 
 ## Testing
 
-See ROADMAP.md — no test suite yet. The pure helpers in `lib/utils.ts`,
-`lib/matchSubscriptionIcon.ts`, and the price validation in
-`CreateSubscriptionModal` are the natural first targets.
+`npm test` runs `jest-expo` (pinned to 54.x — the latest peer-requires a newer
+React than SDK 54 ships). Coverage is the pure helpers in `lib/utils.ts` and the
+two persisted stores, including the icon round trip.
+
+CI additionally runs `npx expo export --platform web`. That is the only check
+that catches a native module being evaluated in Node during static prerender —
+typecheck, lint and tests all pass while the web build is broken.

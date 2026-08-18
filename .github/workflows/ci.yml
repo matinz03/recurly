@@ -15,6 +15,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # This job runs repository-controlled install scripts; don't leave a
+          # usable GITHUB_TOKEN in the local git config for them to read.
+          persist-credentials: false
 
       # Must match the Node/npm used locally. npm 10 (Node 20) and npm 11
       # (Node 24) resolve optional and peer deps differently, so a lockfile
@@ -36,6 +40,12 @@ jobs:
 
       - name: Test
         run: npm test -- --ci
+
+      # The only check that catches a native module being evaluated in Node
+      # during static prerender - tsc, lint and tests all pass while the web
+      # build is broken. This has caught two real breakages.
+      - name: Web export
+        run: npx expo export --platform web --output-dir /tmp/ci-export
 
       # constants/brandIcons.ts is generated from simple-icons. If it drifts
       # from the generator, the committed icons no longer match the source.

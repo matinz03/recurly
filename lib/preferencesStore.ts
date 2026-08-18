@@ -68,16 +68,16 @@ export const usePreferencesStore = create<PreferencesStore>()(
                 setRemindersEnabled: (enabled) => set({ remindersEnabled: enabled }),
                 setReminderLeadDays: (days) => set({ reminderLeadDays: days }),
 
-                resetPreferences: () => {
+                // Writes the defaults rather than calling
+                // persist.clearStorage(): that removes the key without
+                // awaiting, so it races the write this set() triggers and the
+                // final disk state depends on which lands last. Persisting the
+                // defaults reaches the same end state in one ordered step.
+                resetPreferences: () =>
                     set({
                         remindersEnabled: DEFAULT_REMINDERS_ENABLED,
                         reminderLeadDays: DEFAULT_REMINDER_LEAD_DAYS,
-                    });
-                    // usePreferencesStore isn't assigned until `create` returns,
-                    // but this only ever runs later, from a user action, so the
-                    // binding has long since settled by the time it's called.
-                    usePreferencesStore.persist.clearStorage();
-                },
+                    }),
             };
         },
         {

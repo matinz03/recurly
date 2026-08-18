@@ -137,8 +137,24 @@ const cancelOwnReminders = async (): Promise<void> => {
  * what makes the reminders master switch actually take effect immediately
  * (see the early return below) instead of only on the next subscription edit.
  */
-export const scheduleRenewalReminders = async (subscriptions: Subscription[]): Promise<void> => {
-    if (!isSupportedPlatform) return;
+export const scheduleRenewalReminders = (subscriptions: Subscription[]): Promise<void> => {
+    if (!isSupportedPlatform) return Promise.resolve();
+
+    // Both store subscriptions fire this on every set(), and the body is a
+    // cancel-then-schedule sequence of awaits. Overlapping runs interleave:
+    // run B's cancel sweep deletes what run A just scheduled, leaving no
+    // reminders at all. Chaining onto the previous run serialises them, and
+    // the tail always reflects the latest state because each run reads the
+    // arguments it was given.
+    pendingReschedule = pendingReschedule
+        .catch(() => {})
+        .then(() => runScheduleRenewalReminders(subscriptions));
+    return pendingReschedule;
+};
+
+let pendingReschedule: Promise<void> = Promise.resolve();
+
+const runScheduleRenewalReminders = async (subscriptions: Subscription[]): Promise<void> => {
 
     const { remindersEnabled, reminderLeadDays } = usePreferencesStore.getState();
 

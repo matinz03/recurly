@@ -23,7 +23,8 @@ declare global {
         plan?: string;
         category?: string;
         paymentMethod?: string;
-        status?: string;
+        /** Constrained: spend totals and reminders only recognise these three. */
+        status?: SubscriptionStatus;
         startDate?: string;
         price: number;
         currency?: string;

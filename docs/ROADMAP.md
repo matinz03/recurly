@@ -38,6 +38,11 @@ Prioritised by "how badly does its absence hurt a real user", not by effort.
 
 ## P1
 
+- [ ] **Analytics run with no consent step.** PostHog is initialised at app
+      start and captures events before the user agrees to anything, and there's
+      no privacy copy or opt-out. Raised by CodeRabbit; it's a product/legal
+      call, not a code one, so it's recorded rather than decided here.
+
 - [x] **Duplicate detection** when creating a subscription that already
       exists. `findDuplicateSubscriptionByName()` in `lib/utils.ts` warns
       (never blocks) on a case-/punctuation-insensitive name match, excluding

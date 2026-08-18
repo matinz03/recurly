@@ -25,6 +25,7 @@ const Settings = () => {
     const setRemindersEnabled = usePreferencesStore((state) => state.setRemindersEnabled);
     const setReminderLeadDays = usePreferencesStore((state) => state.setReminderLeadDays);
     const resetPreferences = usePreferencesStore((state) => state.resetPreferences);
+    const clearSubscriptions = useSubscriptionStore((state) => state.clearSubscriptions);
 
     const handleSignOut = async () => {
         if (isSigningOut) return;
@@ -67,15 +68,11 @@ const Settings = () => {
                     style: 'destructive',
                     onPress: () => {
                         notifyDestructive();
-                        // lib/subscriptionStore.ts is out of scope for this change,
-                        // so it's reset via the persist API zustand already exposes
-                        // on the hook - clearStorage() wipes the disk copy, and
-                        // setState (the store's own base API, not a new action
-                        // added to that file) clears the in-memory list so the
-                        // Subscriptions tab doesn't keep showing stale data until
-                        // the next app launch.
-                        useSubscriptionStore.persist.clearStorage();
-                        useSubscriptionStore.setState({ subscriptions: [] });
+                        // Both stores clear by persisting an empty/default
+                        // state rather than removing the key - see
+                        // clearSubscriptions for why the key-removal route
+                        // races and can resurrect the seed list.
+                        clearSubscriptions();
                         resetPreferences();
                         posthog?.capture('stored_data_cleared');
                     },

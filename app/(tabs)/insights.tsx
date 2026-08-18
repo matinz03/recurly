@@ -58,9 +58,14 @@ const Insights = () => {
             .sort((a, b) => b.amount - a.amount)
             .slice(0, TOP_LIMIT);
 
+        // Scoped to the dominant currency like every other figure here.
+        // Counting all currencies made the Status card disagree with the
+        // "N active plans" tile above it, with nothing explaining why.
         const counts = STATUSES.map((status) => ({
             status,
-            count: subscriptions.filter((s) => s.status?.toLowerCase() === status).length,
+            count: subscriptions.filter(
+                (s) => s.status?.toLowerCase() === status && (s.currency ?? 'USD') === currency
+            ).length,
         }));
 
         return {

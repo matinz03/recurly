@@ -169,10 +169,21 @@ const CreateSubscriptionModal = ({ visible, onClose, onSubmit, subscription, exi
 
         const trimmedName = name.trim();
         const priceValue = Number(price.trim());
-        // The start date can be backdated, so the first renewal is one billing
-        // period after it, rolled forward until it lands in the future.
+        // Only recompute when the anchor actually moved. A stored renewalDate
+        // isn't necessarily derived from startDate (the seeded records aren't),
+        // so recomputing on an unrelated edit - a rename, say - would silently
+        // shift the next renewal, and with it the scheduled reminder.
+        const anchorUnchanged =
+            isEditing &&
+            subscription.billing === frequency &&
+            !!subscription.startDate &&
+            dayjs(subscription.startDate).isSame(startDate) &&
+            !!subscription.renewalDate;
+
         const firstRenewal = startDate.add(1, frequency === 'Monthly' ? 'month' : 'year');
-        const renewalDate = nextRenewalDate(firstRenewal.toISOString(), frequency) ?? firstRenewal;
+        const renewalDate = anchorUnchanged
+            ? dayjs(subscription.renewalDate)
+            : nextRenewalDate(firstRenewal.toISOString(), frequency) ?? firstRenewal;
 
         // Keep the existing artwork when editing without renaming, so a manual
         // icon isn't lost to a name that no longer matches anything.
