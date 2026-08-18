@@ -13,6 +13,8 @@
     --color-primary: #081126;
     --color-accent: #ea7a53;
     --color-border: rgba(0, 0, 0, 0.1);
+    /* Visible outline weight; see the note on .list-action. */
+    --color-border-strong: rgba(8, 17, 38, 0.28);
     --color-success: #16a34a;
     --color-destructive: #dc2626;
     --color-subscription: #8fd1bd;
@@ -72,6 +74,7 @@
         --color-primary: #f3ecd7;
         --color-accent: #a84c2b;
         --color-border: rgba(244, 237, 220, 0.14);
+        --color-border-strong: rgba(243, 236, 215, 0.24);
         --color-success: #4ade80;
         --color-destructive: #ef4444;
         --color-subscription: #33564a;
@@ -147,8 +150,13 @@
         @apply text-2xl font-sans-bold text-primary;
     }
 
+    /* border-border-strong, not an opacity modifier on a theme colour: that
+       compiles to color-mix(in oklab, ...) which overrides Tailwind's own
+       literal fallback, leaving the colour dependent on a runtime function.
+       A real token per theme also keeps the weight even - black/20 on cream
+       read as no border at all next to white/20 on near-black. */
     .list-action {
-        @apply rounded-full border border-black/20 px-4 py-1 dark:border-white/20;
+        @apply rounded-full border border-border-strong px-4 py-1;
     }
 
     .list-action-text {
@@ -157,7 +165,7 @@
 
     /* Stub geometry - see docs/DECISIONS.md. Radius scales with the card. */
     .upcoming-card {
-        @apply mr-4 w-44 rounded-bl-2xl rounded-tr-2xl border border-black/10 bg-background p-4 dark:border-white/10;
+        @apply mr-4 w-44 rounded-bl-2xl rounded-tr-2xl border border-border-strong bg-background p-4;
     }
 
     .upcoming-row {
@@ -244,8 +252,12 @@
         @apply text-sm font-sans-medium text-muted-foreground;
     }
 
+    /* Padding, not margin: the body is measured and absolutely positioned for
+       the expand animation, and a top margin would offset it below the animated
+       container's height, clipping the last row. Padding is inside the measured
+       box, so the spacing travels with it. */
     .sub-body {
-        @apply mt-6 gap-4;
+        @apply pt-6 gap-4;
     }
 
     .sub-details {
@@ -305,7 +317,7 @@
     }
 
     .sub-action {
-        @apply flex-1 items-center rounded-full border border-primary/20 py-4;
+        @apply flex-1 items-center rounded-full border border-border-strong py-4;
     }
 
     .sub-action-text {
@@ -525,6 +537,52 @@
 
     .auth-link {
         @apply text-sm font-sans-bold text-accent;
+    }
+
+    .dialog-overlay {
+        @apply flex-1 items-center justify-center p-6;
+    }
+
+    /* Same stub geometry as the cards - a confirmation is about a record, so it
+       reads as one of the app's own surfaces rather than an OS dialog. */
+    .dialog-card {
+        @apply w-full max-w-[360px] gap-3 rounded-bl-3xl rounded-tr-3xl border border-border bg-card p-6;
+    }
+
+    .dialog-title {
+        @apply text-xl font-sans-bold text-primary;
+    }
+
+    .dialog-message {
+        @apply text-base font-sans-medium text-muted-foreground;
+    }
+
+    .dialog-actions {
+        @apply mt-2 flex-row gap-3;
+    }
+
+    .dialog-cancel {
+        @apply flex-1 items-center rounded-full border border-border-strong py-4;
+    }
+
+    .dialog-cancel-text {
+        @apply font-sans-bold text-primary;
+    }
+
+    .dialog-confirm {
+        @apply flex-1 items-center rounded-full bg-primary py-4;
+    }
+
+    .dialog-confirm-destructive {
+        @apply bg-destructive;
+    }
+
+    .dialog-confirm-text {
+        @apply font-sans-bold text-background;
+    }
+
+    .dialog-confirm-text-destructive {
+        @apply text-white;
     }
 
     .modal-overlay {

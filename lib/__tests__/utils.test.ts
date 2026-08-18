@@ -1,5 +1,13 @@
 import dayjs from 'dayjs';
-import { findDuplicateSubscriptionByName, formatCurrency, monthlyPrice, nextRenewalDate, totalsByCurrency } from '@/lib/utils';
+import {
+    containsCardNumber,
+    findDuplicateSubscriptionByName,
+    formatCurrency,
+    monthlyPrice,
+    nextRenewalDate,
+    resolveSubscriptionCurrency,
+    totalsByCurrency,
+} from '@/lib/utils';
 
 const subscription = (overrides: Partial<Subscription> = {}): Subscription => ({
     id: 'test',
@@ -141,5 +149,44 @@ describe('findDuplicateSubscriptionByName', () => {
     it('ignores a blank name', () => {
         const subscriptions = [subscription({ id: 'a', name: 'Netflix' })];
         expect(findDuplicateSubscriptionByName('   ', subscriptions)).toBeUndefined();
+    });
+});
+
+describe('containsCardNumber', () => {
+    it('accepts a plain card name', () => {
+        expect(containsCardNumber('Personal Amex')).toBe(false);
+    });
+
+    it('accepts a name that mentions the last four', () => {
+        expect(containsCardNumber('Visa 4242')).toBe(false);
+    });
+
+    it('rejects a pasted card number', () => {
+        expect(containsCardNumber('4111111111111111')).toBe(true);
+    });
+
+    it('rejects a card number with spaces or dashes', () => {
+        expect(containsCardNumber('4111 1111 1111 1111')).toBe(true);
+        expect(containsCardNumber('4111-1111-1111-1111')).toBe(true);
+    });
+
+    it('rejects the shortest real card length', () => {
+        // 13 digits is a valid PAN, so the floor has to sit below it.
+        expect(containsCardNumber('4222222222222')).toBe(true);
+    });
+
+    it('rejects digits hidden among words', () => {
+        expect(containsCardNumber('card 4111 1111 1111 1111 personal')).toBe(true);
+    });
+});
+
+describe('resolveSubscriptionCurrency', () => {
+    it('adopts the base currency for a new subscription', () => {
+        expect(resolveSubscriptionCurrency(undefined, 'EUR')).toBe('EUR');
+    });
+
+    it('keeps what an existing subscription was priced in', () => {
+        // Editing an unrelated field must not re-denominate a stored amount.
+        expect(resolveSubscriptionCurrency('USD', 'EUR')).toBe('USD');
     });
 });

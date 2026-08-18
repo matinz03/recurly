@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, FlatList, Keyboard, Platform, Pressable, Text, TextInput, View } from 'react-native';
+import { FlatList, Keyboard, Platform, Pressable, Text, TextInput, View } from 'react-native';
 import { SafeAreaView as RNSafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { styled } from "nativewind";
@@ -7,6 +7,7 @@ import { Feather } from '@expo/vector-icons';
 import { spacing, useThemeColors } from "@/constants/theme";
 import SubscriptionCard from "@/components/SubscriptionCard";
 import CreateSubscriptionModal from "@/components/CreateSubscriptionModal";
+import ConfirmDialog from "@/components/ConfirmDialog";
 import AddSubscriptionButton from "@/components/AddSubscriptionButton";
 import HydrationGate from "@/components/HydrationGate";
 import EmptySubscriptions from "@/components/EmptySubscriptions";
@@ -133,6 +134,35 @@ const Subscriptions = () => {
         return <Text className="home-empty-state">No subscriptions match your search and filters.</Text>;
     };
 
+    // One pending confirmation at a time, described by the caller. Replaces
+    // Alert.alert, which can't be styled to match the app.
+    const [pendingAction, setPendingAction] = useState<{
+        title: string;
+        message: string;
+        confirmLabel: string;
+        run: () => void;
+    } | null>(null);
+
+    const confirmCancel = useCallback((subscription: Subscription) => {
+        setPendingAction({
+            title: `Cancel ${subscription.name}?`,
+            message:
+                'It stays in your list marked as cancelled and stops counting toward your spend.',
+            confirmLabel: 'Cancel it',
+            run: () => cancelSubscription(subscription.id),
+        });
+    }, [cancelSubscription]);
+
+    const confirmDelete = useCallback((subscription: Subscription) => {
+        setPendingAction({
+            title: `Delete ${subscription.name}?`,
+            message:
+                "This removes it and its history for good - there's no undo. To stop paying but keep the record, use Cancel instead.",
+            confirmLabel: 'Delete',
+            run: () => deleteSubscription(subscription.id),
+        });
+    }, [deleteSubscription]);
+
     const openCreate = useCallback(() => {
         setEditing(null);
         setIsModalVisible(true);
@@ -144,44 +174,8 @@ const Subscriptions = () => {
         setIsModalVisible(true);
     }, []);
 
-    const confirmCancel = useCallback((subscription: Subscription) => {
-        Alert.alert(
-            `Cancel ${subscription.name}?`,
-            'It stays in your list marked as cancelled and stops counting toward your spend.',
-            [
-                { text: 'Keep it', style: 'cancel' },
-                {
-                    text: 'Cancel subscription',
-                    style: 'destructive',
-                    onPress: () => {
-                        notifyDestructive();
-                        cancelSubscription(subscription.id);
-                    },
-                },
-            ]
-        );
-    }, [cancelSubscription]);
-
     // Delete is unrecoverable - there's no undo - so the copy leans hard on
     // the distinction from Cancel, which merely marks status and keeps history.
-    const confirmDelete = useCallback((subscription: Subscription) => {
-        Alert.alert(
-            `Delete ${subscription.name}?`,
-            "This permanently removes it, including its history - there's no undo. To keep the record but stop billing, use Cancel instead.",
-            [
-                { text: 'Keep it', style: 'cancel' },
-                {
-                    text: 'Delete',
-                    style: 'destructive',
-                    onPress: () => {
-                        notifyDestructive();
-                        deleteSubscription(subscription.id);
-                    },
-                },
-            ]
-        );
-    }, [deleteSubscription]);
-
     // Not destructive and fully reversible, so no confirmation - unlike Cancel/Delete.
     const togglePauseResume = useCallback((subscription: Subscription) => {
         const next: SubscriptionStatus = subscription.status?.toLowerCase() === 'paused' ? 'active' : 'paused';
@@ -330,6 +324,20 @@ const Subscriptions = () => {
             />
 
             <AddSubscriptionButton onPress={openCreate} />
+
+            <ConfirmDialog
+                visible={pendingAction !== null}
+                title={pendingAction?.title ?? ''}
+                message={pendingAction?.message ?? ''}
+                confirmLabel={pendingAction?.confirmLabel ?? ''}
+                destructive
+                onCancel={() => setPendingAction(null)}
+                onConfirm={() => {
+                    notifyDestructive();
+                    pendingAction?.run();
+                    setPendingAction(null);
+                }}
+            />
 
             <CreateSubscriptionModal
                 visible={isModalVisible}

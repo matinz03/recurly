@@ -193,10 +193,13 @@ const runScheduleRenewalReminders = async (subscriptions: Subscription[]): Promi
     // permission with no payoff (the classic cold-boot mistake).
     if (candidates.length === 0) return;
 
+    // Channel first: on a fresh Android 13+ install the permission prompt
+    // doesn't appear until a channel exists, so asking first meant never being
+    // granted and never scheduling.
+    await ensureAndroidChannel();
+
     const granted = await ensurePermissionAsync();
     if (!granted) return; // Denied, or unavailable on this platform - degrade silently.
-
-    await ensureAndroidChannel();
 
     for (const { subscription, timing } of candidates) {
         try {

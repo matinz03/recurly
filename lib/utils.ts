@@ -141,3 +141,60 @@ export const findDuplicateSubscriptionByName = (
             normalizeSubscriptionName(subscription.name) === normalized,
     );
 };
+
+/**
+ * Whether `#rrggbb` is light enough to need dark ink on top.
+ *
+ * The theme alone can't answer this. An unrecognised category falls back to the
+ * persisted light colour even in dark mode, so a theme-only check painted light
+ * ink onto a pale card. Uses WCAG relative luminance, thresholded near the
+ * midpoint where dark and light ink swap places.
+ */
+export const isLightColor = (color?: string): boolean => {
+  if (!color) return false;
+
+  const hex = color.replace("#", "");
+  const full =
+    hex.length === 3
+      ? hex
+          .split("")
+          .map((char) => char + char)
+          .join("")
+      : hex;
+  if (full.length !== 6) return false;
+
+  const channel = (offset: number) => {
+    const value = parseInt(full.slice(offset, offset + 2), 16) / 255;
+    return value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+  };
+
+  const luminance =
+    0.2126 * channel(0) + 0.7152 * channel(2) + 0.0722 * channel(4);
+  return luminance > 0.18;
+};
+
+/**
+ * Whether free text contains something long enough to be a card number.
+ *
+ * The "Paid with" label is free text, so a full card number can be pasted into
+ * it - and it would then be persisted. Only a name and the last four are ever
+ * wanted, so a PAN-length run of digits is refused rather than quietly stored.
+ * Separators are stripped first, so "4111 1111 1111 1111" and
+ * "4111-1111-1111-1111" are both caught, and the floor sits below the shortest
+ * real PAN (13) to leave no room to slip one through.
+ */
+export const containsCardNumber = (value: string): boolean =>
+  value.replace(/[^0-9]/g, "").length >= 12;
+
+/**
+ * The currency a subscription's amount is stored in.
+ *
+ * An existing record keeps what it was priced in; only a new one adopts the
+ * current base currency. Overwriting it would silently re-denominate a stored
+ * amount when an unrelated field is edited, and Settings promises that changing
+ * the preference doesn't convert saved amounts.
+ */
+export const resolveSubscriptionCurrency = (
+  existingCurrency: string | undefined,
+  baseCurrency: string,
+): string => existingCurrency ?? baseCurrency;

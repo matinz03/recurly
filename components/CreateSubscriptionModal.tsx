@@ -10,7 +10,7 @@ import { CATEGORIES, CATEGORY_COLORS, isCategory, type Category } from '@/consta
 import { usePreferencesStore } from '@/lib/preferencesStore';
 import { useThemeColors } from '@/constants/theme';
 import { posthog } from '@/lib/posthog';
-import { findDuplicateSubscriptionByName, nextRenewalDate } from '@/lib/utils';
+import { containsCardNumber, findDuplicateSubscriptionByName, nextRenewalDate, resolveSubscriptionCurrency } from '@/lib/utils';
 import { matchSubscriptionIcon } from '@/lib/matchSubscriptionIcon';
 import SubscriptionIcon from '@/components/SubscriptionIcon';
 
@@ -29,6 +29,7 @@ type Frequency = 'Monthly' | 'Yearly';
 
 /** Matches the shape paymentMethod is stored in, e.g. "Visa ending in 8530". */
 const PAYMENT_METHOD = /^(.*?) ending in (\d{4})$/;
+
 
 // Plain decimal only: digits with at most one decimal point.
 const DECIMAL_PRICE = /^\d*\.?\d+$/;
@@ -88,7 +89,8 @@ const CreateSubscriptionModal = ({ visible, onClose, onSubmit, subscription, exi
         return Number.isFinite(numValue) && numValue > 0;
     };
 
-    const isValidForm = name.trim() !== '' && isValidPrice();
+    const cardLabelRejected = containsCardNumber(cardLabel);
+    const isValidForm = name.trim() !== '' && isValidPrice() && !cardLabelRejected;
 
     const matchedIcon = useMemo(() => matchSubscriptionIcon(name), [name]);
 
@@ -215,7 +217,7 @@ const CreateSubscriptionModal = ({ visible, onClose, onSubmit, subscription, exi
             status: subscription?.status ?? 'active',
             startDate: startDate.toISOString(),
             price: priceValue,
-            currency: baseCurrency,
+            currency: resolveSubscriptionCurrency(subscription?.currency, baseCurrency),
             billing: frequency,
             renewalDate: renewalDate.toISOString(),
             color: CATEGORY_COLORS[category],
@@ -330,6 +332,13 @@ const CreateSubscriptionModal = ({ visible, onClose, onSubmit, subscription, exi
                                     value={cardLabel}
                                     onChangeText={setCardLabel}
                                 />
+                                {/* Says what to do instead, rather than only
+                                    greying out Save with no explanation. */}
+                                {cardLabelRejected && (
+                                    <Text className="auth-warning">
+                                        Remove the card number - name the card instead, and put its last four digits below.
+                                    </Text>
+                                )}
                                 {/* Last four only - enough to tell cards apart,
                                     without holding card numbers. */}
                                 <TextInput

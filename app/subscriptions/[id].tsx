@@ -4,13 +4,13 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { styled } from 'nativewind';
 import { useMemo } from 'react';
 import { icons } from '@/constants/icons';
-import { colors, useIsDarkTheme } from '@/constants/theme';
+import { colors } from '@/constants/theme';
 import { useCategoryColor } from '@/constants/categories';
 import SubscriptionIcon from '@/components/SubscriptionIcon';
 import Money from '@/components/Money';
 import HydrationGate from '@/components/HydrationGate';
 import { useSubscriptionStore } from '@/lib/subscriptionStore';
-import { daysUntil, formatStatusLabel, formatSubscriptionDateTime, nextRenewalDate } from '@/lib/utils';
+import { daysUntil, formatStatusLabel, formatSubscriptionDateTime, isLightColor, nextRenewalDate } from '@/lib/utils';
 
 const SafeAreaView = styled(RNSafeAreaView);
 
@@ -22,7 +22,6 @@ const SubscriptionDetails = () => {
     const { id } = useLocalSearchParams<{ id: string }>();
     const router = useRouter();
     const { subscriptions, hasHydrated } = useSubscriptionStore();
-    const isDark = useIsDarkTheme();
     const categoryColor = useCategoryColor();
 
     const subscription = useMemo(
@@ -42,11 +41,12 @@ const SubscriptionDetails = () => {
         return { next, daysLeft: next ? daysUntil(next) : null, cancelled: false };
     }, [subscription]);
 
-    // Dark mode gives the category a dark tone, so the ink override below is
-    // only needed on the light theme's pale ground.
+    // Same rule as the card: ink follows the resolved colour's luminance, since
+    // an unrecognised category keeps its persisted light colour in dark mode.
     const heroColor = categoryColor(subscription?.category, subscription?.color);
-    const heroInk = heroColor && !isDark ? { color: colors.primary } : undefined;
-    const heroMutedInk = heroColor && !isDark ? { color: colors.mutedForeground } : undefined;
+    const onLightHero = isLightColor(heroColor);
+    const heroInk = onLightHero ? { color: colors.primary } : undefined;
+    const heroMutedInk = onLightHero ? { color: colors.mutedForeground } : undefined;
 
     return (
         <SafeAreaView className="flex-1 bg-background">

@@ -1,4 +1,4 @@
-import { Text, View, Pressable, Image, Alert, Switch, ScrollView } from 'react-native'
+import { Text, View, Pressable, Image, Switch, ScrollView } from 'react-native'
 import { SafeAreaView as RNSafeAreaView } from "react-native-safe-area-context";
 import { styled } from "nativewind";
 import { useClerk, useUser } from '@clerk/expo';
@@ -8,6 +8,7 @@ import { posthog } from '@/lib/posthog';
 import { notifyDestructive } from '@/lib/haptics';
 import { REMINDER_LEAD_DAY_OPTIONS, THEME_OPTIONS, usePreferencesStore, type ReminderLeadDays, type ThemePreference } from '@/lib/preferencesStore';
 import { CURRENCIES } from '@/constants/currencies';
+import ConfirmDialog from '@/components/ConfirmDialog';
 import { useSubscriptionStore } from '@/lib/subscriptionStore';
 import { useState } from 'react';
 import { clsx } from 'clsx';
@@ -62,28 +63,17 @@ const Settings = () => {
     // "stored data" doesn't read as vaguer than it is, same reasoning
     // subscriptions.tsx's Cancel-vs-Delete copy gives for spelling out what's
     // actually lost.
-    const confirmClearData = () => {
-        Alert.alert(
-            'Clear all stored data?',
-            "This permanently deletes every subscription on this device, along with your reminder settings - there's no undo. You'll start over with an empty list.",
-            [
-                { text: 'Keep it', style: 'cancel' },
-                {
-                    text: 'Clear data',
-                    style: 'destructive',
-                    onPress: () => {
-                        notifyDestructive();
-                        // Both stores clear by persisting an empty/default
-                        // state rather than removing the key - see
-                        // clearSubscriptions for why the key-removal route
-                        // races and can resurrect the seed list.
-                        clearSubscriptions();
-                        resetPreferences();
-                        posthog?.capture('stored_data_cleared');
-                    },
-                },
-            ]
-        );
+    const [confirmingClear, setConfirmingClear] = useState(false);
+
+    const handleClearData = () => {
+        notifyDestructive();
+        // Both stores clear by persisting an empty/default state rather than
+        // removing the key - see clearSubscriptions for why the key-removal
+        // route races and can resurrect the seed list.
+        clearSubscriptions();
+        resetPreferences();
+        posthog?.capture('stored_data_cleared');
+        setConfirmingClear(false);
     };
 
     const displayName = user?.firstName || user?.fullName || user?.emailAddresses[0]?.emailAddress || 'User';
@@ -230,7 +220,7 @@ const Settings = () => {
                 <Text className="settings-row-helper mb-3">
                     Removes every subscription and preference saved on this device.
                 </Text>
-                <Pressable className="settings-danger-button" onPress={confirmClearData}>
+                <Pressable className="settings-danger-button" onPress={() => setConfirmingClear(true)}>
                     <Text className="settings-danger-button-text">Clear Stored Data</Text>
                 </Pressable>
             </View>
@@ -247,6 +237,16 @@ const Settings = () => {
                 </Text>
             </Pressable>
             </ScrollView>
+
+            <ConfirmDialog
+                visible={confirmingClear}
+                title="Clear all stored data?"
+                message="This deletes every subscription on this device along with your reminder settings, and there's no undo. You'll start again with an empty list."
+                confirmLabel="Clear data"
+                destructive
+                onCancel={() => setConfirmingClear(false)}
+                onConfirm={handleClearData}
+            />
         </SafeAreaView>
     )
 }
