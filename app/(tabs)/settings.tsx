@@ -1,14 +1,14 @@
-import { Text, View, Pressable, Image, Switch, ScrollView } from 'react-native'
+import { Text, View, Pressable, Switch, ScrollView } from 'react-native'
 import { SafeAreaView as RNSafeAreaView } from "react-native-safe-area-context";
 import { styled } from "nativewind";
 import { useClerk, useUser } from '@clerk/expo';
-import images from '@/constants/images';
 import { useThemeColors } from '@/constants/theme';
 import { posthog } from '@/lib/posthog';
 import { notifyDestructive } from '@/lib/haptics';
 import { REMINDER_LEAD_DAY_OPTIONS, THEME_OPTIONS, usePreferencesStore, type ReminderLeadDays, type ThemePreference } from '@/lib/preferencesStore';
 import { CURRENCIES } from '@/constants/currencies';
 import ConfirmDialog from '@/components/ConfirmDialog';
+import Avatar from '@/components/Avatar';
 import { useSubscriptionStore } from '@/lib/subscriptionStore';
 import { useState } from 'react';
 import { clsx } from 'clsx';
@@ -87,10 +87,7 @@ const Settings = () => {
             {/* User Profile Section */}
             <View className="auth-card mb-5">
                 <View className="flex-row items-center gap-4 mb-4">
-                    <Image
-                        source={user?.imageUrl ? { uri: user.imageUrl } : images.avatar}
-                        className="size-16 rounded-full"
-                    />
+                    <Avatar imageUrl={user?.imageUrl} name={displayName} />
                     <View className="flex-1">
                         <Text className="text-lg font-sans-bold text-primary">{displayName}</Text>
                         {email && (

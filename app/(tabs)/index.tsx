@@ -1,11 +1,11 @@
 import "@/global.css"
-import {FlatList, Image, Text, View} from "react-native";
+import { FlatList, Text, View } from 'react-native';
 import {SafeAreaView as RNSafeAreaView} from "react-native-safe-area-context";
 import { styled } from "nativewind";
-import images from "@/constants/images";
 import {daysUntil, formatCurrency, nextRenewalDate, totalsByCurrency} from "@/lib/utils";
 import dayjs from "dayjs";
 import ListHeading from "@/components/ListHeading";
+import Avatar from '@/components/Avatar';
 import UpcomingSubscriptionCard from "@/components/UpcomingSubscriptionCard";
 import Money from "@/components/Money";
 import SubscriptionCard from "@/components/SubscriptionCard";
@@ -106,10 +106,7 @@ export default function App() {
                         <>
                             <View className="home-header">
                                 <View className="home-user">
-                                    <Image
-                                        source={user?.imageUrl ? { uri: user.imageUrl } : images.avatar}
-                                        className="home-avatar"
-                                    />
+                                    <Avatar imageUrl={user?.imageUrl} name={displayName} />
                                     <Text className="home-user-name">{displayName}</Text>
                                 </View>
                             </View>

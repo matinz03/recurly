@@ -479,3 +479,56 @@ to pull. If these move to `eas env:create` later, each profile will need it.
 sideloadable test builds, and while internal distribution produces an APK today,
 a default that later changed to AAB would yield something that can't be installed
 from a GitHub release.
+
+## The icon set is generated from `assets/icons/logo.png`
+
+Every launcher and splash asset is derived from the one brand mark by
+`npm run generate:app-icons`, rather than being hand-exported. The mark is the
+stub - the same rounded diagonal the cards use - with a cream `R`, and the
+generator reads its colour out of the source rather than hardcoding one, so a
+recoloured logo propagates.
+
+Before this they were all Expo template defaults: the blue chevron icon, the
+Expo logo as the splash image, `#E6F4FE` behind the adaptive icon, and plain
+white/black splash grounds. Those now use `--color-background` from `global.css`
+in both themes.
+
+The interesting part is the upscale. The source is 256x256 and an app icon needs
+1024, and three approaches were tried on screen:
+
+1. **Threshold a bilinear sample.** Linear interpolation has a kink at every
+   source pixel, so thresholding it turned the letter's bowl into a visible
+   polygon.
+2. **Threshold a Catmull-Rom sample.** Cubic is smooth, but it overshoots at a
+   step edge, which notched the stub's straight sides.
+3. **Threshold a signed distance field**, which is what `scripts/sdf.js` builds.
+   A distance field has no step to ring on, so interpolating it and thresholding
+   at zero reconstructs a smooth contour at any scale. Exact Euclidean distance
+   via Felzenszwalb-Huttenlocher, run on the inside and the outside.
+
+One trap worth keeping written down: the mark fills its own canvas, so its outer
+edges are where the artwork was cropped, not where the shape ends. The field had
+no "outside" to measure and reported the entire canvas as inside, which painted
+the mark edge to edge. The masks are padded before the transform so every edge
+is a real boundary.
+
+Sizing is per platform rather than one image reused: 64% of the canvas for
+iOS and web so it survives a circular mask, 52% for the Android adaptive
+foreground because only the centre 66/108 of that layer is guaranteed visible,
+and 86% for the splash, which the plugin scales to 200px over
+`backgroundColor`. The Android themed layer fills the stub flat and knocks the
+letter out, so the glyph still reads once the system tints the opaque area.
+
+## The avatar fallback is a monogram, not a stock illustration
+
+`user.imageUrl` from Clerk when there is one, otherwise the user's initials on an
+accent ground - `components/Avatar.tsx`.
+
+The fallback used to be a bundled illustration that shipped with the starter, a
+stock character holding React and JS logos, rendered as *the signed-in user's
+avatar* on Home and in Settings. A monogram can't be someone else's face, is
+derived from the name already displayed beside it, and needs no asset at all.
+
+The initials come from the same `displayName` the screens show, so an email
+address contributes its first character rather than being split on dots into
+something like "FL".
