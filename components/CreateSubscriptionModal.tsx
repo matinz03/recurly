@@ -245,7 +245,7 @@ const CreateSubscriptionModal = ({ visible, onClose, onSubmit, subscription, exi
                                 <View className="flex-row items-center justify-between">
                                     <Text className="auth-label">Name</Text>
                                     {matchedIcon && (
-                                        <SubscriptionIcon icon={matchedIcon} className="size-7 rounded-md bg-background" svgSize={16} />
+                                        <SubscriptionIcon icon={matchedIcon} className="name-match-icon" svgSize={16} />
                                     )}
                                 </View>
                                 <TextInput
