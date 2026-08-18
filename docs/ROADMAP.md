@@ -94,6 +94,11 @@ Prioritised by "how badly does its absence hurt a real user", not by effort.
 
 ## Known cosmetic debt
 
+- `.detail-status-badge` is `bg-background`, which in dark mode is a near-black
+  pill sitting on a fixed light category pastel. Legible (light ink on the dark
+  pill), but reads as an odd dark chip on a pale card — wants a fixed token like
+  the ink around it.
+
 - `.modal-handle` is 6px tall with 2px borders, so the accent border reads as a
   fill rather than an outline.
 - `.sub-icon` gained `bg-background`, which puts a cream tile behind logos on
