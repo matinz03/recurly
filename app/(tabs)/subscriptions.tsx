@@ -1,10 +1,10 @@
-import { useCallback, useMemo, useState } from 'react';
-import { Alert, FlatList, Keyboard, Pressable, Text, TextInput, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Alert, FlatList, Keyboard, Platform, Pressable, Text, TextInput, View } from 'react-native';
 import { SafeAreaView as RNSafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { styled } from "nativewind";
 import { Feather } from '@expo/vector-icons';
-import { useThemeColors } from "@/constants/theme";
+import { spacing, useThemeColors } from "@/constants/theme";
 import SubscriptionCard from "@/components/SubscriptionCard";
 import CreateSubscriptionModal from "@/components/CreateSubscriptionModal";
 import AddSubscriptionButton from "@/components/AddSubscriptionButton";
@@ -79,6 +79,27 @@ const Subscriptions = () => {
         }
         return counts;
     }, [searchMatches]);
+
+    // `edgeToEdgeEnabled` is on, so on Android the window does NOT shrink when
+    // the keyboard opens - it becomes an inset the app has to handle, and
+    // softwareKeyboardLayoutMode: "resize" no longer applies. Without this the
+    // last cards sit behind the keyboard with no scroll range to reach them.
+    // iOS is handled by automaticallyAdjustKeyboardInsets on the list instead.
+    const [keyboardInset, setKeyboardInset] = useState(0);
+
+    useEffect(() => {
+        if (Platform.OS !== 'android') return;
+
+        const show = Keyboard.addListener('keyboardDidShow', (event) =>
+            setKeyboardInset(event.endCoordinates.height)
+        );
+        const hide = Keyboard.addListener('keyboardDidHide', () => setKeyboardInset(0));
+
+        return () => {
+            show.remove();
+            hide.remove();
+        };
+    }, []);
 
     const visibleSubscriptions = useMemo(() => {
         const matches =
@@ -188,6 +209,7 @@ const Subscriptions = () => {
                 <Text className="list-title">
                     {sort === 'renewal' ? 'By next renewal' : 'Subscriptions'}
                 </Text>
+                <AddSubscriptionButton onPress={openCreate} />
             </View>
 
             <View className="search-bar">
@@ -300,10 +322,12 @@ const Subscriptions = () => {
                 // the window, so adding our own spacer would double-count it.
                 automaticallyAdjustKeyboardInsets
                 ListEmptyComponent={renderEmpty()}
-                contentContainerClassName="pb-30"
+                // One source of truth: clearance for the floating tab bar,
+                // plus the keyboard on Android where the window doesn't shrink.
+                // A contentContainerStyle paddingBottom would otherwise just
+                // override the class's, dropping the tab-bar clearance.
+                contentContainerStyle={{ paddingBottom: spacing[30] + keyboardInset }}
             />
-
-            <AddSubscriptionButton onPress={openCreate} />
 
             <CreateSubscriptionModal
                 visible={isModalVisible}

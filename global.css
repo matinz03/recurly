@@ -281,8 +281,11 @@
 
     /* Pinned top right, where the add control originally sat, rather than
        scrolling away inside a list header. */
+    /* Inline in a fixed header row rather than absolutely positioned: it has
+       to line up with the user's name / screen title, and absolute positioning
+       against an edge-to-edge screen put it in the status bar. */
     .add-button {
-        @apply absolute right-0 top-0 z-10 size-12 items-center justify-center rounded-full bg-muted;
+        @apply size-12 items-center justify-center rounded-full bg-muted;
     }
 
     .add-button-glyph {
@@ -525,7 +528,7 @@
        screen. The ScrollView inside must NOT be flex-1: that zeroes its
        flex-basis, so the sheet would collapse to just the header. */
     .modal-container {
-        @apply mt-auto max-h-[85%] rounded-t-3xl bg-background;
+        @apply mt-auto max-h-[90%] rounded-t-3xl bg-background;
     }
 
     .modal-handle-row {

@@ -6,12 +6,14 @@ interface AddSubscriptionButtonProps {
 }
 
 /**
- * Sits at the top right, where the add control originally lived, but pinned to
- * the viewport rather than scrolling away inside a list header.
+ * Rendered inline, at the end of a screen's header row, so it sits across from
+ * the user's name on Home and the title on Subscriptions.
  *
- * Positioned absolutely against the screen's padded content box, so both
- * screens place it identically: over the header row on Home, over the title
- * row on Subscriptions.
+ * It is NOT absolutely positioned. Anchoring it to the top of the screen put it
+ * in the status bar: `edgeToEdgeEnabled` is on, so the window extends behind
+ * the system bars and there is no inset to position against. Keeping it inline
+ * and lifting the whole header row out of the scrolling list is what makes it
+ * both aligned and fixed.
  */
 const AddSubscriptionButton = ({ onPress }: AddSubscriptionButtonProps) => (
     <Pressable

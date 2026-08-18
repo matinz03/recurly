@@ -88,7 +88,7 @@ const Settings = () => {
         <SafeAreaView className="flex-1 bg-background p-5">
             <Text className="text-3xl font-sans-bold text-primary mb-6">Settings</Text>
 
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerClassName="pb-10">
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerClassName="pb-30">
             {/* User Profile Section */}
             <View className="auth-card mb-5">
                 <View className="flex-row items-center gap-4 mb-4">
