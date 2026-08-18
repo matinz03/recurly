@@ -326,3 +326,22 @@ retuning one token for both.
 Note some bundled PNGs (Adobe) carry their own opaque background, so they will
 look different from the transparent ones whatever this token is. Fixing that
 means replacing the asset.
+
+## The lockfile is regenerated in a clean directory, not in place
+
+`npm ci` in CI failed four separate times on lockfile drift, and the last cause
+was the subtle one: running `npm install --package-lock-only` inside the working
+copy resolves against the `node_modules` already on disk. `bufferutil` and
+`utf-8-validate` are optional native addons of `ws` that fail to build on a
+Windows machine without MSVC, so npm had pruned them locally and then wrote a
+lockfile that omitted them. Linux CI can build them, computes an ideal tree that
+includes them, and reports `Missing: bufferutil from lock file`.
+
+Deleting the lockfile first doesn't help - npm still reuses the tree on disk. To
+regenerate it, copy `package.json` alone into an empty directory, run
+`npm install --package-lock-only` there, and copy the result back.
+
+Related earlier causes, all now covered: npm 10 (Node 20) and npm 11 (Node 24)
+resolve optional and peer deps differently, so `.nvmrc` pins the version CI
+uses; and platform-specific optional binaries have to be present for every
+platform, not just the one that generated the file.

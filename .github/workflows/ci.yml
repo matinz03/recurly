@@ -29,6 +29,12 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
 
+      # If this fails with "Missing: <pkg> from lock file", the lockfile was
+      # regenerated in a working copy that already had node_modules. npm reuses
+      # the tree on disk when resolving, so optional native deps that failed to
+      # build locally (bufferutil, utf-8-validate) get pruned from the lock and
+      # then CI, which can build them, finds the lock incomplete. Regenerate in
+      # a clean directory holding only package.json.
       - name: Install
         run: npm ci
 
