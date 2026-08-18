@@ -9,6 +9,7 @@ import { PostHogProvider, usePostHog } from "posthog-react-native";
 import { posthog } from "@/lib/posthog";
 import { useRenewalReminders } from "@/lib/useRenewalReminders";
 import { useThemePreference } from "@/lib/useThemePreference";
+import { usePreferencesStore } from "@/lib/preferencesStore";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -69,17 +70,22 @@ function RootLayoutContent() {
   });
   const { isLoaded: authLoaded } = useAuth();
   const fontsReady = fontsLoaded || !!fontError;
+  // The saved light/system/dark choice can only be applied once preferences
+  // have come back from storage. Rendering before then shows one frame in the
+  // OS theme and flips - visible on a cold start with a dark preference and a
+  // light device - so startup waits behind the splash screen instead.
+  const themeReady = usePreferencesStore((state) => state.hasHydrated);
 
   useRenewalReminders();
   useThemePreference();
 
   useEffect(() => {
-    if (fontsReady && authLoaded) {
+    if (fontsReady && authLoaded && themeReady) {
       SplashScreen.hideAsync().catch(() => {});
     }
-  }, [fontsReady, authLoaded]);
+  }, [fontsReady, authLoaded, themeReady]);
 
-  if (!fontsReady || !authLoaded) return null;
+  if (!fontsReady || !authLoaded || !themeReady) return null;
   return <Stack screenOptions={{ headerShown: false }} />;
 }
 
