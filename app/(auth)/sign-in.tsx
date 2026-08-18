@@ -6,9 +6,9 @@ import { SafeAreaView as RNSafeAreaView } from 'react-native-safe-area-context';
 import { styled } from 'nativewind';
 import * as Linking from 'expo-linking';
 import { AntDesign } from '@expo/vector-icons';
-import { colors } from '@/constants/theme';
+import { useThemeColors } from '@/constants/theme';
 import { posthog } from '@/lib/posthog';
-import clsx from 'clsx';
+import { clsx } from 'clsx';
 
 const SafeAreaView = styled(RNSafeAreaView);
 
@@ -19,6 +19,7 @@ const SSO_PROVIDERS = [
 ] as const;
 
 const SignIn = () => {
+    const colors = useThemeColors();
     const { signIn, errors, fetchStatus } = useSignIn();
     const { startSSOFlow } = useSSO();
     const router = useRouter();
@@ -197,7 +198,7 @@ const SignIn = () => {
                                             className="auth-input"
                                             value={code}
                                             placeholder="Enter 6-digit code"
-                                            placeholderTextColor="rgba(0, 0, 0, 0.4)"
+                                            placeholderTextColor={colors.placeholder}
                                             onChangeText={setCode}
                                             keyboardType="number-pad"
                                             autoComplete="one-time-code"
@@ -287,7 +288,7 @@ const SignIn = () => {
                                         autoCapitalize="none"
                                         value={emailAddress}
                                         placeholder="name@example.com"
-                                        placeholderTextColor="rgba(0, 0, 0, 0.4)"
+                                        placeholderTextColor={colors.placeholder}
                                         onChangeText={setEmailAddress}
                                         onBlur={() => setEmailTouched(true)}
                                         keyboardType="email-address"
@@ -307,7 +308,7 @@ const SignIn = () => {
                                         className={clsx('auth-input', passwordTouched && !passwordValid && 'auth-input-error')}
                                         value={password}
                                         placeholder="Enter your password"
-                                        placeholderTextColor="rgba(0, 0, 0, 0.4)"
+                                        placeholderTextColor={colors.placeholder}
                                         secureTextEntry
                                         onChangeText={setPassword}
                                         onBlur={() => setPasswordTouched(true)}
@@ -371,7 +372,10 @@ const SignIn = () => {
                         <View className="auth-link-row">
                             <Text className="auth-link-copy">Don&apos;t have an account?</Text>
                             <Link href="/(auth)/sign-up" asChild>
-                                <Pressable>
+                                {/* `.auth-link` is just the text's own line height (~20pt) with
+                                    no padding - under the 44pt minimum. hitSlop instead of
+                                    padding, which would misalign it from the copy beside it. */}
+                                <Pressable hitSlop={{ top: 12, bottom: 12 }}>
                                     <Text className="auth-link">Create Account</Text>
                                 </Pressable>
                             </Link>

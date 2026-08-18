@@ -7,6 +7,7 @@ import { ClerkProvider, useAuth, useUser } from "@clerk/expo";
 import { tokenCache } from "@clerk/expo/token-cache";
 import { PostHogProvider, usePostHog } from "posthog-react-native";
 import { posthog } from "@/lib/posthog";
+import { useRenewalReminders } from "@/lib/useRenewalReminders";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -68,6 +69,8 @@ function RootLayoutContent() {
   });
   const { isLoaded: authLoaded } = useAuth();
   const fontsReady = fontsLoaded || !!fontError;
+
+  useRenewalReminders();
 
   useEffect(() => {
     if (fontsReady && authLoaded) {

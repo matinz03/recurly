@@ -1,8 +1,8 @@
 import {Tabs, Redirect} from "expo-router";
 import {tabs} from "@/constants/data";
 import {View,Image} from "react-native";
-import { colors, components } from '@/constants/theme'
-import clsx from "clsx";
+import { NAV_CHROME_BACKGROUND, components } from '@/constants/theme'
+import { clsx } from "clsx";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from '@clerk/expo';
 
@@ -42,7 +42,8 @@ const TabLayout = () => {
                                 height: tabBar.height,
                                 marginHorizontal: tabBar.horizontalInset,
                                 borderRadius: tabBar.radius,
-                                backgroundColor: colors.primary,
+                                // Fixed, not theme-reactive - see constants/theme.ts.
+                                backgroundColor: NAV_CHROME_BACKGROUND,
                                 borderTopWidth: 0,
                                 elevation: 0,
                         },

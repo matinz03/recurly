@@ -2,12 +2,13 @@ import { View, Text, Modal, Pressable, TextInput, KeyboardAvoidingView, Platform
 import { BlurView } from 'expo-blur';
 import DateTimePicker, { DateTimePickerAndroid, type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { Feather } from '@expo/vector-icons';
-import { useMemo, useRef, useState } from 'react';
-import clsx from 'clsx';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { clsx } from 'clsx';
 import dayjs, { type Dayjs } from 'dayjs';
 import { icons } from '@/constants/icons';
-import { colors } from '@/constants/theme';
+import { useThemeColors } from '@/constants/theme';
 import { posthog } from '@/lib/posthog';
+import { findDuplicateSubscriptionByName, nextRenewalDate } from '@/lib/utils';
 import { matchSubscriptionIcon } from '@/lib/matchSubscriptionIcon';
 import SubscriptionIcon from '@/components/SubscriptionIcon';
 
@@ -15,17 +16,30 @@ interface CreateSubscriptionModalProps {
     visible: boolean;
     onClose: () => void;
     onSubmit: (subscription: Subscription) => void;
+    /** When set, the form edits this subscription instead of creating one. */
+    subscription?: Subscription | null;
+    /** Used only to warn on a likely-duplicate name; optional so the modal
+        still works if a caller hasn't wired the current list through yet. */
+    existingSubscriptions?: Subscription[];
 }
 
 type Frequency = 'Monthly' | 'Yearly';
 type Category = 'Entertainment' | 'AI Tools' | 'Developer Tools' | 'Design' | 'Productivity' | 'Other';
+type Currency = 'USD' | 'EUR' | 'GBP' | 'CAD' | 'JPY';
 
 // Plain decimal only: digits with at most one decimal point.
 const DECIMAL_PRICE = /^\d*\.?\d+$/;
 
 const FREQUENCIES: Frequency[] = ['Monthly', 'Yearly'];
 const CATEGORIES: Category[] = ['Entertainment', 'AI Tools', 'Developer Tools', 'Design', 'Productivity', 'Other'];
+const CURRENCIES: Currency[] = ['USD', 'EUR', 'GBP', 'CAD', 'JPY'];
 
+// Fixed pastels, not theme tokens - these are data (a category identifier
+// that gets persisted on the subscription and rendered as a card
+// background), not the app's palette, so they deliberately don't adapt to
+// dark mode. They stay light in both themes, and SubscriptionCard/[id].tsx
+// paint the ink on top of them with the static light-theme colors for the
+// same reason - see docs/DECISIONS.md.
 const CATEGORY_COLORS: Record<Category, string> = {
     Entertainment: '#ff6b6b',
     'AI Tools': '#b8d4e3',
@@ -35,27 +49,42 @@ const CATEGORY_COLORS: Record<Category, string> = {
     Other: '#d4d4d4',
 };
 
-// The chosen start date can be in the past, so the first renewal is the first
-// occurrence of the billing period that lands after today - not just "start + 1".
-const computeNextRenewalDate = (start: Dayjs, frequency: Frequency) => {
-    const unit = frequency === 'Monthly' ? 'month' : 'year';
-    const now = dayjs();
-    let renewal = start.add(1, unit);
-    while (renewal.isBefore(now)) {
-        renewal = renewal.add(1, unit);
-    }
-    return renewal;
-};
+const isCategory = (value?: string): value is Category =>
+    !!value && (CATEGORIES as string[]).includes(value);
+
+const isCurrency = (value?: string): value is Currency =>
+    !!value && (CURRENCIES as string[]).includes(value);
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-const CreateSubscriptionModal = ({ visible, onClose, onSubmit }: CreateSubscriptionModalProps) => {
+const CreateSubscriptionModal = ({ visible, onClose, onSubmit, subscription, existingSubscriptions }: CreateSubscriptionModalProps) => {
+    const colors = useThemeColors();
+    const isEditing = !!subscription;
+
     const [name, setName] = useState('');
     const [price, setPrice] = useState('');
     const [frequency, setFrequency] = useState<Frequency>('Monthly');
+    const [currency, setCurrency] = useState<Currency>('USD');
     const [category, setCategory] = useState<Category>('Other');
     const [startDate, setStartDate] = useState<Dayjs>(() => dayjs());
     const [showIosDatePicker, setShowIosDatePicker] = useState(false);
+
+    // Load the edited subscription into the form when the sheet opens. Keyed on
+    // visible as well so reopening the same row discards any half-made edits.
+    useEffect(() => {
+        if (!visible) return;
+        if (subscription) {
+            setName(subscription.name);
+            setPrice(String(subscription.price));
+            setFrequency(subscription.billing?.toLowerCase() === 'yearly' ? 'Yearly' : 'Monthly');
+            // Preserve the existing currency rather than resetting to USD, so
+            // editing a non-USD subscription can't silently change its currency.
+            setCurrency(isCurrency(subscription.currency) ? subscription.currency : 'USD');
+            setCategory(isCategory(subscription.category) ? subscription.category : 'Other');
+            setStartDate(subscription.startDate ? dayjs(subscription.startDate) : dayjs());
+        }
+        setShowIosDatePicker(false);
+    }, [visible, subscription]);
 
     // Number() alone would accept exponential and hex literals, turning a
     // pasted "1e5" into a $100,000 subscription - so check the shape first.
@@ -70,10 +99,20 @@ const CreateSubscriptionModal = ({ visible, onClose, onSubmit }: CreateSubscript
 
     const matchedIcon = useMemo(() => matchSubscriptionIcon(name), [name]);
 
+    // Excludes the record being edited by id, not by name - otherwise editing
+    // "Netflix" without renaming it would always "find" itself as a duplicate.
+    // This only ever warns; a second Netflix plan is a legitimate thing to
+    // create, so it never blocks submit.
+    const duplicateSubscription = useMemo(
+        () => findDuplicateSubscriptionByName(name, existingSubscriptions ?? [], subscription?.id),
+        [name, existingSubscriptions, subscription?.id]
+    );
+
     const resetForm = () => {
         setName('');
         setPrice('');
         setFrequency('Monthly');
+        setCurrency('USD');
         setCategory('Other');
         setStartDate(dayjs());
         // Otherwise an iOS calendar left open is still expanded on reopen.
@@ -128,25 +167,34 @@ const CreateSubscriptionModal = ({ visible, onClose, onSubmit }: CreateSubscript
     const handleSubmit = () => {
         if (!isValidForm) return;
 
+        const trimmedName = name.trim();
         const priceValue = Number(price.trim());
-        const renewalDate = computeNextRenewalDate(startDate, frequency);
+        // The start date can be backdated, so the first renewal is one billing
+        // period after it, rolled forward until it lands in the future.
+        const firstRenewal = startDate.add(1, frequency === 'Monthly' ? 'month' : 'year');
+        const renewalDate = nextRenewalDate(firstRenewal.toISOString(), frequency) ?? firstRenewal;
+
+        // Keep the existing artwork when editing without renaming, so a manual
+        // icon isn't lost to a name that no longer matches anything.
+        const icon = matchedIcon ?? (isEditing && trimmedName === subscription.name ? subscription.icon : icons.plus);
 
         onSubmit({
-            id: `sub-${Date.now()}`,
-            icon: matchedIcon ?? icons.plus,
-            name: name.trim(),
+            ...(subscription ?? {}),
+            id: subscription?.id ?? `sub-${Date.now()}`,
+            icon,
+            name: trimmedName,
             category,
-            status: 'active',
+            status: subscription?.status ?? 'active',
             startDate: startDate.toISOString(),
             price: priceValue,
-            currency: 'USD',
+            currency,
             billing: frequency,
             renewalDate: renewalDate.toISOString(),
             color: CATEGORY_COLORS[category],
         });
 
-        posthog?.capture('subscription_created', {
-            subscription_name: name.trim(),
+        posthog?.capture(isEditing ? 'subscription_updated' : 'subscription_created', {
+            subscription_name: trimmedName,
             subscription_price: priceValue,
             subscription_frequency: frequency,
             subscription_category: category,
@@ -171,8 +219,17 @@ const CreateSubscriptionModal = ({ visible, onClose, onSubmit }: CreateSubscript
                                 <View className="modal-handle" />
                             </View>
                             <View className="modal-header">
-                                <Text className="modal-title">New Subscription</Text>
-                                <Pressable className="modal-close" onPress={handleClose} accessibilityLabel="Close">
+                                <Text className="modal-title">{isEditing ? 'Edit Subscription' : 'New Subscription'}</Text>
+                                <Pressable
+                                    className="modal-close"
+                                    onPress={handleClose}
+                                    accessibilityRole="button"
+                                    accessibilityLabel="Close"
+                                    // `.modal-close` is a fixed 32pt circle - under the 44pt
+                                    // minimum. Growing the chip would crowd the header next to
+                                    // the title, so extend the tap target instead.
+                                    hitSlop={6}
+                                >
                                     <Text className="modal-close-text">✕</Text>
                                 </Pressable>
                             </View>
@@ -193,10 +250,15 @@ const CreateSubscriptionModal = ({ visible, onClose, onSubmit }: CreateSubscript
                                 <TextInput
                                     className="auth-input"
                                     placeholder="Subscription name"
-                                    placeholderTextColor="rgba(0, 0, 0, 0.4)"
+                                    placeholderTextColor={colors.placeholder}
                                     value={name}
                                     onChangeText={setName}
                                 />
+                                {duplicateSubscription && (
+                                    <Text className="auth-warning">
+                                        You already have a subscription named &quot;{duplicateSubscription.name}&quot;. This will be tracked as a separate one.
+                                    </Text>
+                                )}
                             </View>
 
                             <View className="auth-field">
@@ -204,7 +266,7 @@ const CreateSubscriptionModal = ({ visible, onClose, onSubmit }: CreateSubscript
                                 <TextInput
                                     className="auth-input"
                                     placeholder="0.00"
-                                    placeholderTextColor="rgba(0, 0, 0, 0.4)"
+                                    placeholderTextColor={colors.placeholder}
                                     value={price}
                                     onChangeText={setPrice}
                                     keyboardType="decimal-pad"
@@ -213,14 +275,37 @@ const CreateSubscriptionModal = ({ visible, onClose, onSubmit }: CreateSubscript
 
                             <View className="auth-field">
                                 <Text className="auth-label">Frequency</Text>
-                                <View className="picker-row">
+                                <View className="picker-row" accessibilityRole="radiogroup">
                                     {FREQUENCIES.map((option) => (
                                         <Pressable
                                             key={option}
                                             className={clsx('picker-option', frequency === option && 'picker-option-active')}
                                             onPress={() => setFrequency(option)}
+                                            accessibilityRole="radio"
+                                            accessibilityLabel={option}
+                                            accessibilityState={{ selected: frequency === option }}
                                         >
                                             <Text className={clsx('picker-option-text', frequency === option && 'picker-option-text-active')}>
+                                                {option}
+                                            </Text>
+                                        </Pressable>
+                                    ))}
+                                </View>
+                            </View>
+
+                            <View className="auth-field">
+                                <Text className="auth-label">Currency</Text>
+                                <View className="picker-row" accessibilityRole="radiogroup">
+                                    {CURRENCIES.map((option) => (
+                                        <Pressable
+                                            key={option}
+                                            className={clsx('picker-option', currency === option && 'picker-option-active')}
+                                            onPress={() => setCurrency(option)}
+                                            accessibilityRole="radio"
+                                            accessibilityLabel={option}
+                                            accessibilityState={{ selected: currency === option }}
+                                        >
+                                            <Text className={clsx('picker-option-text', currency === option && 'picker-option-text-active')}>
                                                 {option}
                                             </Text>
                                         </Pressable>
@@ -239,6 +324,9 @@ const CreateSubscriptionModal = ({ visible, onClose, onSubmit }: CreateSubscript
                                         {startDate.format('MM/DD/YYYY')}
                                     </Text>
                                     <Feather name="calendar" size={18} color={colors.mutedForeground} />
+                                    {/* colors here is useThemeColors()'s reactive palette, not the
+                                        static export - this icon sits on `.auth-input`'s themed
+                                        bg-background, so it should follow the app theme. */}
                                 </Pressable>
                                 {Platform.OS === 'ios' && showIosDatePicker && (
                                     <DateTimePicker
@@ -252,12 +340,21 @@ const CreateSubscriptionModal = ({ visible, onClose, onSubmit }: CreateSubscript
 
                             <View className="auth-field">
                                 <Text className="auth-label">Category</Text>
-                                <View className="category-scroll">
+                                <View className="category-scroll" accessibilityRole="radiogroup">
                                     {CATEGORIES.map((cat) => (
                                         <Pressable
                                             key={cat}
                                             className={clsx('category-chip', category === cat && 'category-chip-active')}
                                             onPress={() => setCategory(cat)}
+                                            accessibilityRole="radio"
+                                            accessibilityLabel={cat}
+                                            accessibilityState={{ selected: category === cat }}
+                                            // `.category-chip` is ~36pt tall (px-4 py-2 around
+                                            // text-sm) - under the 44pt minimum. The chips sit in a
+                                            // flex-wrap row with an 8px gap, so 4pt of hitSlop per
+                                            // side extends the tap target right up to (not past)
+                                            // the neighbouring chip's own hitSlop.
+                                            hitSlop={{ top: 4, bottom: 4 }}
                                         >
                                             <Text className={clsx('category-chip-text', category === cat && 'category-chip-text-active')}>
                                                 {cat}
@@ -272,7 +369,7 @@ const CreateSubscriptionModal = ({ visible, onClose, onSubmit }: CreateSubscript
                                 onPress={handleSubmit}
                                 disabled={!isValidForm}
                             >
-                                <Text className="auth-button-text">Create Subscription</Text>
+                                <Text className="auth-button-text">{isEditing ? 'Save Changes' : 'Create Subscription'}</Text>
                             </Pressable>
                         </ScrollView>
                     </AnimatedPressable>

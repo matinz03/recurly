@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [master, dev]
+
+concurrency:
+  # Supersede in-flight runs for the same ref rather than queueing them.
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Must match the Node/npm used locally. npm 10 (Node 20) and npm 11
+      # (Node 24) resolve optional and peer deps differently, so a lockfile
+      # written by one fails `npm ci` under the other - which is exactly how
+      # this workflow broke.
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck
+        run: npx tsc --noEmit -p .
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm test -- --ci
+
+      # constants/brandIcons.ts is generated from simple-icons. If it drifts
+      # from the generator, the committed icons no longer match the source.
+      - name: Verify generated brand icons are up to date
+        run: |
+          npm run generate:brand-icons
+          git diff --exit-code -- constants/brandIcons.ts
