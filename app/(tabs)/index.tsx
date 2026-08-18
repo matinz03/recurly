@@ -7,6 +7,7 @@ import {daysUntil, formatCurrency, nextRenewalDate, totalsByCurrency} from "@/li
 import dayjs from "dayjs";
 import ListHeading from "@/components/ListHeading";
 import UpcomingSubscriptionCard from "@/components/UpcomingSubscriptionCard";
+import Money from "@/components/Money";
 import SubscriptionCard from "@/components/SubscriptionCard";
 import CreateSubscriptionModal from "@/components/CreateSubscriptionModal";
 import AddSubscriptionButton from "@/components/AddSubscriptionButton";
@@ -22,6 +23,12 @@ const SafeAreaView = styled(RNSafeAreaView);
 
 /** How many renewals the Upcoming carousel shows. */
 const UPCOMING_LIMIT = 5;
+
+/**
+ * Home is a dashboard, not the full list - "View all" goes to the Subscriptions
+ * tab for the rest. Without this the two screens showed the same thing.
+ */
+const HOME_LIST_LIMIT = 5;
 
 /** Stable reference so the hydration fallback can't bust useMemo deps. */
 const NO_SUBSCRIPTIONS: Subscription[] = [];
@@ -108,9 +115,11 @@ export default function App() {
                                 <Text className="home-balance-label">Monthly spend</Text>
 
                                 <View className="home-balance-row">
-                                    <Text className="home-balance-amount">
-                                        {formatCurrency(dominantTotal?.monthly ?? 0, dominantTotal?.currency)}
-                                    </Text>
+                                    <Money
+                                        value={dominantTotal?.monthly ?? 0}
+                                        currency={dominantTotal?.currency}
+                                        className="home-balance-amount"
+                                    />
                                     <Text className="home-balance-date">
                                         {nextRenewal ? dayjs(nextRenewal.renewsAt).format('MM/DD') : '--'}
                                     </Text>
@@ -147,7 +156,7 @@ export default function App() {
                             />
                         </>
                     }
-                    data={subscriptions}
+                    data={subscriptions.slice(0, HOME_LIST_LIMIT)}
                     keyExtractor={(item) => item.id}
                     renderItem={({ item }) => (
                         <SubscriptionCard

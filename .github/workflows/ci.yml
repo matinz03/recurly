@@ -29,6 +29,12 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
 
+      # If this fails with "Missing: <pkg> from lock file", the lockfile was
+      # regenerated in a working copy that already had node_modules. npm reuses
+      # the tree on disk when resolving, so optional native deps that failed to
+      # build locally (bufferutil, utf-8-validate) get pruned from the lock and
+      # then CI, which can build them, finds the lock incomplete. Regenerate in
+      # a clean directory holding only package.json.
       - name: Install
         run: npm ci
 
@@ -46,6 +52,12 @@ jobs:
       # build is broken. This has caught two real breakages.
       - name: Web export
         run: npx expo export --platform web --output-dir /tmp/ci-export
+        env:
+          # The root layout throws without this, so the export needs *a* key.
+          # It's a placeholder, not a secret: publishable keys are shipped to
+          # clients by design (hence the EXPO_PUBLIC_ prefix), nothing here
+          # signs in, and a real key would tie CI to one Clerk instance.
+          EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_ZXhhbXBsZS5jbGVyay5hY2NvdW50cy5kZXYk
 
       # constants/brandIcons.ts is generated from simple-icons. If it drifts
       # from the generator, the committed icons no longer match the source.

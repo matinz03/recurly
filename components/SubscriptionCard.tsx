@@ -1,10 +1,15 @@
 import {View, Text, Pressable} from 'react-native'
-import React from 'react'
+import Animated, {ReduceMotion, useAnimatedStyle, useSharedValue, withTiming} from 'react-native-reanimated'
+import React, {useEffect, useState} from 'react'
 import {Feather} from '@expo/vector-icons'
-import {formatCurrency, formatStatusLabel, formatSubscriptionDateTime} from "@/lib/utils";
+import {formatCurrency, formatStatusLabel, formatSubscriptionDateTime, isLightColor} from "@/lib/utils";
 import SubscriptionIcon from "@/components/SubscriptionIcon";
+import Money from "@/components/Money";
 import {colors, useThemeColors} from "@/constants/theme";
+import {useCategoryColor} from "@/constants/categories";
 import { clsx } from "clsx";
+
+const EXPAND_MS = 220;
 
 const SubscriptionCard = ({ name, price, currency, icon, billing, color, category, plan, renewalDate, expanded, onPress, onEditPress, onCancelPress, onDeletePress, onPauseResumePress, paymentMethod, startDate, status}: SubscriptionCardProps) => {
     const themeColors = useThemeColors();
@@ -15,14 +20,39 @@ const SubscriptionCard = ({ name, price, currency, icon, billing, color, categor
     // reactivating it, which is a different action than this one performs.
     const showPauseResume = !!onPauseResumePress && !isCancelled;
 
-    // `color` is the fixed category pastel (CATEGORY_COLORS), not theme - it
-    // stays light in both modes (see docs/DECISIONS.md), so text painted
-    // directly on it uses the static light ink (`colors`, not
-    // `useThemeColors()`) rather than the app's dark-mode ink, or it would
-    // vanish against a light pastel once the app's ink flips light.
-    const onFixedColor = !expanded && !!color;
-    const fixedInkStyle = onFixedColor ? { color: colors.primary } : undefined;
-    const fixedMutedStyle = onFixedColor ? { color: colors.mutedForeground } : undefined;
+    // Ink is chosen from the resolved colour, not the theme. A theme-only test
+    // was wrong for a category we don't recognise: it falls back to the
+    // persisted light colour even in dark mode, so light ink landed on a pale
+    // card. Called unconditionally - inside a && these would be short-circuited
+    // away on some renders, changing hook order.
+    const categoryColor = useCategoryColor();
+
+    const cardColor = categoryColor(category, color);
+    const onLightGround = !expanded && isLightColor(cardColor);
+    const fixedInkStyle = onLightGround ? { color: colors.primary } : undefined;
+    const fixedMutedStyle = onLightGround ? { color: colors.mutedForeground } : undefined;
+
+    // The body's height is animated directly rather than left to a layout
+    // transition. Reanimated's `exiting` detaches a view from layout while it
+    // fades, so the card reflowed to its collapsed height immediately and the
+    // rows appeared to snap shut while their contents were still moving -
+    // matching durations didn't help, because the container was never
+    // animating in the first place. Measuring the content and interpolating
+    // height keeps both halves on the same clock.
+    const [bodyHeight, setBodyHeight] = useState(0);
+    const progress = useSharedValue(expanded ? 1 : 0);
+
+    useEffect(() => {
+        progress.value = withTiming(expanded ? 1 : 0, {
+            duration: EXPAND_MS,
+            reduceMotion: ReduceMotion.System,
+        });
+    }, [expanded, progress]);
+
+    const bodyStyle = useAnimatedStyle(() => ({
+        height: bodyHeight * progress.value,
+        opacity: progress.value,
+    }));
 
     const metaText = category?.trim() || plan?.trim() || (renewalDate ? formatSubscriptionDateTime(renewalDate) : '');
 
@@ -34,7 +64,7 @@ const SubscriptionCard = ({ name, price, currency, icon, billing, color, categor
         .join(', ');
 
     return (
-        <View className={clsx('sub-card', expanded ? 'sub-card-expanded' : 'bg-card')} style={!expanded && color ? { backgroundColor: color } : undefined}>
+        <View className={clsx('sub-card', expanded ? 'sub-card-expanded' : 'bg-card')} style={!expanded && cardColor ? { backgroundColor: cardColor } : undefined}>
             {/* The expand/collapse toggle now lives on the head row alone, not
                 the whole card: `accessible` on a wrapper collapses its
                 descendants into one node, so putting it on the outer
@@ -68,13 +98,32 @@ const SubscriptionCard = ({ name, price, currency, icon, billing, color, categor
                 </View>
 
                 <View className="sub-price-box">
-                    <Text className="sub-price" style={fixedInkStyle}>{formatCurrency(price, currency)}</Text>
+                    <Money value={price} currency={currency} className="sub-price" style={fixedInkStyle} />
                     <Text className="sub-billing" style={fixedMutedStyle}>{billing}</Text>
                 </View>
             </Pressable>
 
-            {expanded && (
-                <View className="sub-body">
+            {/* Always mounted so its natural height can be measured; hidden by
+                height 0 with overflow clipped, and taken out of the
+                accessibility tree and touch handling while collapsed.
+
+                The measured child is absolutely positioned on purpose. As a
+                normal-flow child it inherits the animated height as its own
+                constraint, so while collapsed it measured 0 and the card could
+                never open - the first version of this shipped exactly that. Out
+                of flow it sizes to its content, with left/right pinning it to
+                the card width. */}
+            <Animated.View
+                style={[{ overflow: 'hidden' }, bodyStyle]}
+                pointerEvents={expanded ? 'auto' : 'none'}
+                accessibilityElementsHidden={!expanded}
+                importantForAccessibility={expanded ? 'auto' : 'no-hide-descendants'}
+            >
+                <View
+                    className="sub-body"
+                    style={{ position: 'absolute', top: 0, left: 0, right: 0 }}
+                    onLayout={(event) => setBodyHeight(event.nativeEvent.layout.height)}
+                >
                     <View className="sub-details">
                         <View className="sub-row">
                             <View className="sub-row-copy">
@@ -167,7 +216,7 @@ const SubscriptionCard = ({ name, price, currency, icon, billing, color, categor
                         </View>
                     )}
                 </View>
-            )}
+            </Animated.View>
         </View>
     )
 }

@@ -1,20 +1,39 @@
 import dayjs from 'dayjs';
-import * as Notifications from 'expo-notifications';
+import { isRunningInExpoGo } from 'expo';
 import { Platform } from 'react-native';
 import { usePreferencesStore } from '@/lib/preferencesStore';
 import { formatCurrency, nextRenewalDate } from '@/lib/utils';
 
 /**
- * expo-notifications is native-only. `app.json` sets `web.output: "static"`,
- * so `expo export` evaluates every module reachable from a route - including
- * this one, via app/_layout.tsx - inside Node to prerender pages. There is no
- * scheduler backend there (or in a real web build), so every exported
- * function below checks this first and returns before calling into the
- * module. A persist backend touching `window` unconditionally broke `expo
- * export` once already (see lib/subscriptionStore.ts); this is the same
- * failure mode guarded the same way.
+ * Where reminders can actually run.
+ *
+ * Web: `app.json` sets `web.output: "static"`, so `expo export` evaluates every
+ * module reachable from a route - including this one, via app/_layout.tsx -
+ * inside Node to prerender pages, where there is no scheduler backend.
+ *
+ * Expo Go: importing expo-notifications pulls in
+ * DevicePushTokenAutoRegistration.fx, a side-effect module that registers a
+ * push-token listener and calls warnOfExpoGoPushUsage(). On Android that is a
+ * `console.error`, which RN's dev overlay escalates to a red box - so merely
+ * importing this module broke app boot in Expo Go. Remote push was removed
+ * from Expo Go in SDK 53 anyway; reminders need a development build.
  */
-const isSupportedPlatform = Platform.OS !== 'web';
+const isSupportedPlatform = Platform.OS !== 'web' && !isRunningInExpoGo();
+
+/**
+ * Loaded on demand, never at module scope. A top-level import would run
+ * expo-notifications' side-effect modules during app startup - including the
+ * Expo Go push warning above - even on platforms where nothing here is usable.
+ */
+type NotificationsModule = typeof import('expo-notifications');
+let cachedModule: NotificationsModule | undefined;
+
+const loadNotifications = (): NotificationsModule | null => {
+    if (!isSupportedPlatform) return null;
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    cachedModule ??= require('expo-notifications') as NotificationsModule;
+    return cachedModule;
+};
 
 /** Local hour the reminder fires at, on the lead day. */
 const RENEWAL_REMINDER_HOUR = 9;
@@ -42,7 +61,8 @@ const reminderIdentifier = (subscriptionId: string) => `renewal-reminder:${subsc
  * previous handler.
  */
 export const configureNotificationHandler = (): void => {
-    if (!isSupportedPlatform) return;
+    const Notifications = loadNotifications();
+    if (!Notifications) return;
 
     Notifications.setNotificationHandler({
         handleNotification: async () => ({
@@ -58,7 +78,8 @@ export const configureNotificationHandler = (): void => {
 // channelId entirely, so this is a no-op there (the native module's own web
 // stub also no-ops, but this only runs on native per isSupportedPlatform).
 const ensureAndroidChannel = async (): Promise<void> => {
-    if (Platform.OS !== 'android') return;
+    const Notifications = loadNotifications();
+    if (!Notifications || Platform.OS !== 'android') return;
     await Notifications.setNotificationChannelAsync(ANDROID_CHANNEL_ID, {
         name: 'Renewal reminders',
         importance: Notifications.AndroidImportance.DEFAULT,
@@ -73,6 +94,9 @@ const ensureAndroidChannel = async (): Promise<void> => {
  * boot with an empty subscription list.
  */
 const ensurePermissionAsync = async (): Promise<boolean> => {
+    const Notifications = loadNotifications();
+    if (!Notifications) return false;
+
     try {
         const current = await Notifications.getPermissionsAsync();
         if (current.granted) return true;
@@ -122,6 +146,9 @@ const reminderTimingFor = (subscription: Subscription, leadDays: number): Remind
 };
 
 const cancelOwnReminders = async (): Promise<void> => {
+    const Notifications = loadNotifications();
+    if (!Notifications) return;
+
     const scheduled = await Notifications.getAllScheduledNotificationsAsync();
     const ours = scheduled.filter((request) => request.content.data?.source === REMINDER_SOURCE);
     await Promise.all(ours.map((request) => Notifications.cancelScheduledNotificationAsync(request.identifier)));
@@ -137,24 +164,9 @@ const cancelOwnReminders = async (): Promise<void> => {
  * what makes the reminders master switch actually take effect immediately
  * (see the early return below) instead of only on the next subscription edit.
  */
-export const scheduleRenewalReminders = (subscriptions: Subscription[]): Promise<void> => {
-    if (!isSupportedPlatform) return Promise.resolve();
-
-    // Both store subscriptions fire this on every set(), and the body is a
-    // cancel-then-schedule sequence of awaits. Overlapping runs interleave:
-    // run B's cancel sweep deletes what run A just scheduled, leaving no
-    // reminders at all. Chaining onto the previous run serialises them, and
-    // the tail always reflects the latest state because each run reads the
-    // arguments it was given.
-    pendingReschedule = pendingReschedule
-        .catch(() => {})
-        .then(() => runScheduleRenewalReminders(subscriptions));
-    return pendingReschedule;
-};
-
-let pendingReschedule: Promise<void> = Promise.resolve();
-
 const runScheduleRenewalReminders = async (subscriptions: Subscription[]): Promise<void> => {
+    const Notifications = loadNotifications();
+    if (!Notifications) return;
 
     const { remindersEnabled, reminderLeadDays } = usePreferencesStore.getState();
 
@@ -181,10 +193,13 @@ const runScheduleRenewalReminders = async (subscriptions: Subscription[]): Promi
     // permission with no payoff (the classic cold-boot mistake).
     if (candidates.length === 0) return;
 
+    // Channel first: on a fresh Android 13+ install the permission prompt
+    // doesn't appear until a channel exists, so asking first meant never being
+    // granted and never scheduling.
+    await ensureAndroidChannel();
+
     const granted = await ensurePermissionAsync();
     if (!granted) return; // Denied, or unavailable on this platform - degrade silently.
-
-    await ensureAndroidChannel();
 
     for (const { subscription, timing } of candidates) {
         try {
@@ -205,4 +220,22 @@ const runScheduleRenewalReminders = async (subscriptions: Subscription[]): Promi
             console.warn(`[notifications] failed to schedule reminder for ${subscription.id}:`, error);
         }
     }
+};
+
+let pendingReschedule: Promise<void> = Promise.resolve();
+
+/**
+ * Serialises reschedules. Both store subscriptions fire on every set(), and the
+ * runner above is a cancel-then-schedule sequence of awaits, so overlapping
+ * runs interleave: run B's cancel sweep deletes what run A just scheduled,
+ * leaving no reminders at all. Each run reads the arguments it was handed, so
+ * the last one to finish still reflects the latest state.
+ */
+export const scheduleRenewalReminders = (subscriptions: Subscription[]): Promise<void> => {
+    if (!isSupportedPlatform) return Promise.resolve();
+
+    pendingReschedule = pendingReschedule
+        .catch(() => {})
+        .then(() => runScheduleRenewalReminders(subscriptions));
+    return pendingReschedule;
 };

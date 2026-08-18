@@ -3,6 +3,7 @@ import { SafeAreaView as RNSafeAreaView } from "react-native-safe-area-context";
 import { styled } from "nativewind";
 import { useMemo } from 'react';
 import ListHeading from '@/components/ListHeading';
+import Money from '@/components/Money';
 import HydrationGate from '@/components/HydrationGate';
 import { formatCurrency, monthlyPrice, totalsByCurrency } from '@/lib/utils';
 import { useSubscriptionStore } from '@/lib/subscriptionStore';
@@ -58,14 +59,16 @@ const Insights = () => {
             .sort((a, b) => b.amount - a.amount)
             .slice(0, TOP_LIMIT);
 
-        // Scoped to the dominant currency like every other figure here.
-        // Counting all currencies made the Status card disagree with the
-        // "N active plans" tile above it, with nothing explaining why.
+        // Deliberately counts every subscription, not just the dominant
+        // currency's. Counts aren't money, so there's nothing to mix - and
+        // scoping them hid records entirely: `currency` is derived from active
+        // subscriptions only, so an account whose plans are all cancelled in
+        // EUR fell back to USD and reported zero of everything. The card is
+        // labelled as covering all currencies so it can't be read as
+        // contradicting the scoped totals above.
         const counts = STATUSES.map((status) => ({
             status,
-            count: subscriptions.filter(
-                (s) => s.status?.toLowerCase() === status && (s.currency ?? 'USD') === currency
-            ).length,
+            count: subscriptions.filter((s) => s.status?.toLowerCase() === status).length,
         }));
 
         return {
@@ -109,14 +112,14 @@ const Insights = () => {
                 <View className="insights-summary-row">
                     <View className="insights-stat">
                         <Text className="insights-stat-label">Per month</Text>
-                        <Text className="insights-stat-value">{formatCurrency(insights.monthlyTotal, insights.currency)}</Text>
+                        <Money value={insights.monthlyTotal} currency={insights.currency} className="insights-stat-value" />
                         <Text className="insights-stat-meta">
                             {insights.activeCount} active {insights.activeCount === 1 ? 'plan' : 'plans'}
                         </Text>
                     </View>
                     <View className="insights-stat">
                         <Text className="insights-stat-label">Per year</Text>
-                        <Text className="insights-stat-value">{formatCurrency(insights.yearlyTotal, insights.currency)}</Text>
+                        <Money value={insights.yearlyTotal} currency={insights.currency} className="insights-stat-value" />
                         <Text className="insights-stat-meta">
                             {formatCurrency(insights.averageCost, insights.currency)} avg / plan
                         </Text>
@@ -169,7 +172,7 @@ const Insights = () => {
                             <View key={id} className="insights-row">
                                 <View className="insights-row-head">
                                     <Text className="insights-row-label" numberOfLines={1}>{name}</Text>
-                                    <Text className="insights-row-value">{formatCurrency(amount, insights.currency)}</Text>
+                                    <Money value={amount} currency={insights.currency} className="insights-row-value" />
                                 </View>
                                 <View className="insights-track">
                                     <View
@@ -187,6 +190,7 @@ const Insights = () => {
 
                 <View className="insights-card">
                     <Text className="insights-card-title">Status</Text>
+                    <Text className="insights-stat-meta">Across all currencies</Text>
                     <View className="insights-status-row">
                         {insights.counts.map(({ status, count }) => (
                             <View key={status} className="insights-status">

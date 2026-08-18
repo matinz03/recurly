@@ -2,6 +2,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import { create } from 'zustand';
 import { createJSONStorage, persist, type StateStorage } from 'zustand/middleware';
+import { type Currency } from '@/constants/currencies';
+
+/** 'system' follows the OS; the others override it. */
+export type ThemePreference = 'light' | 'system' | 'dark';
+
+export const THEME_OPTIONS: ThemePreference[] = ['light', 'system', 'dark'];
 
 /**
  * The only lead times offered on the Settings screen. A closed set (rather
@@ -14,6 +20,8 @@ export type ReminderLeadDays = (typeof REMINDER_LEAD_DAY_OPTIONS)[number];
 // Matches the module constant lib/notifications.ts used before this store
 // existed, so shipping this doesn't change anyone's reminder timing by default.
 const DEFAULT_REMINDER_LEAD_DAYS: ReminderLeadDays = 2;
+const DEFAULT_BASE_CURRENCY: Currency = 'USD';
+const DEFAULT_THEME_PREFERENCE: ThemePreference = 'system';
 const DEFAULT_REMINDERS_ENABLED = true;
 
 interface PreferencesStore {
@@ -24,8 +32,13 @@ interface PreferencesStore {
     hasHydrated: boolean;
     remindersEnabled: boolean;
     reminderLeadDays: ReminderLeadDays;
+    /** Every amount is entered and stored in this currency. */
+    baseCurrency: Currency;
+    themePreference: ThemePreference;
     setRemindersEnabled: (enabled: boolean) => void;
     setReminderLeadDays: (days: ReminderLeadDays) => void;
+    setBaseCurrency: (currency: Currency) => void;
+    setThemePreference: (preference: ThemePreference) => void;
     // Resets in-memory state to defaults and wipes the persisted copy in one
     // call, so Settings' "Clear stored data" doesn't need to know the
     // defaults or reach into the persist API itself.
@@ -35,6 +48,9 @@ interface PreferencesStore {
 interface PersistedPreferences {
     remindersEnabled: boolean;
     reminderLeadDays: ReminderLeadDays;
+    /** Every amount is entered and stored in this currency. */
+    baseCurrency: Currency;
+    themePreference: ThemePreference;
 }
 
 // Same reasoning as lib/subscriptionStore.ts's noopStorage: `expo export`
@@ -64,9 +80,13 @@ export const usePreferencesStore = create<PreferencesStore>()(
                 hasHydrated: false,
                 remindersEnabled: DEFAULT_REMINDERS_ENABLED,
                 reminderLeadDays: DEFAULT_REMINDER_LEAD_DAYS,
+                baseCurrency: DEFAULT_BASE_CURRENCY,
+                themePreference: DEFAULT_THEME_PREFERENCE,
 
                 setRemindersEnabled: (enabled) => set({ remindersEnabled: enabled }),
                 setReminderLeadDays: (days) => set({ reminderLeadDays: days }),
+                setBaseCurrency: (currency) => set({ baseCurrency: currency }),
+                setThemePreference: (preference) => set({ themePreference: preference }),
 
                 // Writes the defaults rather than calling
                 // persist.clearStorage(): that removes the key without
@@ -77,6 +97,8 @@ export const usePreferencesStore = create<PreferencesStore>()(
                     set({
                         remindersEnabled: DEFAULT_REMINDERS_ENABLED,
                         reminderLeadDays: DEFAULT_REMINDER_LEAD_DAYS,
+                        baseCurrency: DEFAULT_BASE_CURRENCY,
+                        themePreference: DEFAULT_THEME_PREFERENCE,
                     }),
             };
         },
@@ -85,11 +107,13 @@ export const usePreferencesStore = create<PreferencesStore>()(
             storage: createJSONStorage(() => storageBackend),
             version: 1,
 
-            // Actions and hasHydrated aren't data - only the two real
-            // preference values go to disk.
+            // Actions and hasHydrated aren't data - only the real preference
+            // values go to disk.
             partialize: (state): PersistedPreferences => ({
                 remindersEnabled: state.remindersEnabled,
                 reminderLeadDays: state.reminderLeadDays,
+                baseCurrency: state.baseCurrency,
+                themePreference: state.themePreference,
             }),
 
             // No shape has shipped before version 1 - see

@@ -75,7 +75,37 @@ describe('persisted round trip', () => {
 
         const persisted = await readPersisted();
 
-        expect(persisted.state).toEqual({ remindersEnabled: false, reminderLeadDays: 3 });
+        expect(persisted.state).toEqual({
+            remindersEnabled: false,
+            reminderLeadDays: 3,
+            baseCurrency: 'USD',
+            themePreference: 'system',
+        });
+    });
+
+    // The light/system/dark choice has to outlive a relaunch, or the app snaps
+    // back to following the OS every cold start.
+    it('persists the chosen appearance', async () => {
+        const useStore = loadStore();
+        expect(useStore.getState().themePreference).toBe('system');
+
+        useStore.getState().setThemePreference('dark');
+        await flush();
+
+        expect((await readPersisted()).state.themePreference).toBe('dark');
+    });
+
+    // Amounts are entered in this currency rather than each subscription
+    // carrying its own, so it has to survive a relaunch like the rest.
+    it('persists the chosen base currency', async () => {
+        const useStore = loadStore();
+        expect(useStore.getState().baseCurrency).toBe('USD');
+
+        useStore.getState().setBaseCurrency('EUR');
+        await flush();
+
+        expect(useStore.getState().baseCurrency).toBe('EUR');
+        expect((await readPersisted()).state.baseCurrency).toBe('EUR');
     });
 
     it('rehydrates persisted values back into state', async () => {

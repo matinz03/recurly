@@ -1,4 +1,4 @@
-import { Text, View, Pressable, Image, Alert, Switch, ScrollView } from 'react-native'
+import { Text, View, Pressable, Image, Switch, ScrollView } from 'react-native'
 import { SafeAreaView as RNSafeAreaView } from "react-native-safe-area-context";
 import { styled } from "nativewind";
 import { useClerk, useUser } from '@clerk/expo';
@@ -6,7 +6,9 @@ import images from '@/constants/images';
 import { useThemeColors } from '@/constants/theme';
 import { posthog } from '@/lib/posthog';
 import { notifyDestructive } from '@/lib/haptics';
-import { REMINDER_LEAD_DAY_OPTIONS, usePreferencesStore, type ReminderLeadDays } from '@/lib/preferencesStore';
+import { REMINDER_LEAD_DAY_OPTIONS, THEME_OPTIONS, usePreferencesStore, type ReminderLeadDays, type ThemePreference } from '@/lib/preferencesStore';
+import { CURRENCIES } from '@/constants/currencies';
+import ConfirmDialog from '@/components/ConfirmDialog';
 import { useSubscriptionStore } from '@/lib/subscriptionStore';
 import { useState } from 'react';
 import { clsx } from 'clsx';
@@ -26,6 +28,10 @@ const Settings = () => {
     const setReminderLeadDays = usePreferencesStore((state) => state.setReminderLeadDays);
     const resetPreferences = usePreferencesStore((state) => state.resetPreferences);
     const clearSubscriptions = useSubscriptionStore((state) => state.clearSubscriptions);
+    const baseCurrency = usePreferencesStore((state) => state.baseCurrency);
+    const setBaseCurrency = usePreferencesStore((state) => state.setBaseCurrency);
+    const themePreference = usePreferencesStore((state) => state.themePreference);
+    const setThemePreference = usePreferencesStore((state) => state.setThemePreference);
 
     const handleSignOut = async () => {
         if (isSigningOut) return;
@@ -57,28 +63,17 @@ const Settings = () => {
     // "stored data" doesn't read as vaguer than it is, same reasoning
     // subscriptions.tsx's Cancel-vs-Delete copy gives for spelling out what's
     // actually lost.
-    const confirmClearData = () => {
-        Alert.alert(
-            'Clear all stored data?',
-            "This permanently deletes every subscription on this device, along with your reminder settings - there's no undo. You'll start over with an empty list.",
-            [
-                { text: 'Keep it', style: 'cancel' },
-                {
-                    text: 'Clear data',
-                    style: 'destructive',
-                    onPress: () => {
-                        notifyDestructive();
-                        // Both stores clear by persisting an empty/default
-                        // state rather than removing the key - see
-                        // clearSubscriptions for why the key-removal route
-                        // races and can resurrect the seed list.
-                        clearSubscriptions();
-                        resetPreferences();
-                        posthog?.capture('stored_data_cleared');
-                    },
-                },
-            ]
-        );
+    const [confirmingClear, setConfirmingClear] = useState(false);
+
+    const handleClearData = () => {
+        notifyDestructive();
+        // Both stores clear by persisting an empty/default state rather than
+        // removing the key - see clearSubscriptions for why the key-removal
+        // route races and can resurrect the seed list.
+        clearSubscriptions();
+        resetPreferences();
+        posthog?.capture('stored_data_cleared');
+        setConfirmingClear(false);
     };
 
     const displayName = user?.firstName || user?.fullName || user?.emailAddresses[0]?.emailAddress || 'User';
@@ -88,7 +83,7 @@ const Settings = () => {
         <SafeAreaView className="flex-1 bg-background p-5">
             <Text className="text-3xl font-sans-bold text-primary mb-6">Settings</Text>
 
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerClassName="pb-10">
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerClassName="pb-30">
             {/* User Profile Section */}
             <View className="auth-card mb-5">
                 <View className="flex-row items-center gap-4 mb-4">
@@ -121,6 +116,53 @@ const Settings = () => {
                             {user?.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}
                         </Text>
                     </View>
+                </View>
+            </View>
+
+            <View className="auth-card mb-5">
+                <Text className="text-base font-sans-semibold text-primary mb-3">Appearance</Text>
+                <Text className="settings-row-helper mb-3">
+                    System follows your device setting.
+                </Text>
+                <View className="picker-row" accessibilityRole="radiogroup">
+                    {THEME_OPTIONS.map((option) => (
+                        <Pressable
+                            key={option}
+                            className={clsx('picker-option', themePreference === option && 'picker-option-active')}
+                            onPress={() => setThemePreference(option as ThemePreference)}
+                            accessibilityRole="radio"
+                            accessibilityLabel={option}
+                            accessibilityState={{ selected: themePreference === option }}
+                        >
+                            <Text className={clsx('picker-option-text', themePreference === option && 'picker-option-text-active')}>
+                                {option === 'system' ? 'System' : option === 'light' ? 'Light' : 'Dark'}
+                            </Text>
+                        </Pressable>
+                    ))}
+                </View>
+            </View>
+
+            <View className="auth-card mb-5">
+                <Text className="text-base font-sans-semibold text-primary mb-3">Currency</Text>
+                <Text className="settings-row-helper mb-3">
+                    Amounts are entered and stored in this currency. Changing it doesn&apos;t convert
+                    what you&apos;ve already saved.
+                </Text>
+                <View className="picker-row" accessibilityRole="radiogroup">
+                    {CURRENCIES.map((option) => (
+                        <Pressable
+                            key={option}
+                            className={clsx('picker-option', baseCurrency === option && 'picker-option-active')}
+                            onPress={() => setBaseCurrency(option)}
+                            accessibilityRole="radio"
+                            accessibilityLabel={option}
+                            accessibilityState={{ selected: baseCurrency === option }}
+                        >
+                            <Text className={clsx('picker-option-text', baseCurrency === option && 'picker-option-text-active')}>
+                                {option}
+                            </Text>
+                        </Pressable>
+                    ))}
                 </View>
             </View>
 
@@ -178,7 +220,7 @@ const Settings = () => {
                 <Text className="settings-row-helper mb-3">
                     Removes every subscription and preference saved on this device.
                 </Text>
-                <Pressable className="settings-danger-button" onPress={confirmClearData}>
+                <Pressable className="settings-danger-button" onPress={() => setConfirmingClear(true)}>
                     <Text className="settings-danger-button-text">Clear Stored Data</Text>
                 </Pressable>
             </View>
@@ -195,6 +237,16 @@ const Settings = () => {
                 </Text>
             </Pressable>
             </ScrollView>
+
+            <ConfirmDialog
+                visible={confirmingClear}
+                title="Clear all stored data?"
+                message="This deletes every subscription on this device along with your reminder settings, and there's no undo. You'll start again with an empty list."
+                confirmLabel="Clear data"
+                destructive
+                onCancel={() => setConfirmingClear(false)}
+                onConfirm={handleClearData}
+            />
         </SafeAreaView>
     )
 }

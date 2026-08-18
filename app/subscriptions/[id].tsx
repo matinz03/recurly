@@ -5,10 +5,12 @@ import { styled } from 'nativewind';
 import { useMemo } from 'react';
 import { icons } from '@/constants/icons';
 import { colors } from '@/constants/theme';
+import { useCategoryColor } from '@/constants/categories';
 import SubscriptionIcon from '@/components/SubscriptionIcon';
+import Money from '@/components/Money';
 import HydrationGate from '@/components/HydrationGate';
 import { useSubscriptionStore } from '@/lib/subscriptionStore';
-import { daysUntil, formatCurrency, formatStatusLabel, formatSubscriptionDateTime, nextRenewalDate } from '@/lib/utils';
+import { daysUntil, formatStatusLabel, formatSubscriptionDateTime, isLightColor, nextRenewalDate } from '@/lib/utils';
 
 const SafeAreaView = styled(RNSafeAreaView);
 
@@ -20,6 +22,7 @@ const SubscriptionDetails = () => {
     const { id } = useLocalSearchParams<{ id: string }>();
     const router = useRouter();
     const { subscriptions, hasHydrated } = useSubscriptionStore();
+    const categoryColor = useCategoryColor();
 
     const subscription = useMemo(
         () => subscriptions.find((item) => item.id === id),
@@ -37,6 +40,13 @@ const SubscriptionDetails = () => {
         const next = nextRenewalDate(subscription.renewalDate, subscription.billing);
         return { next, daysLeft: next ? daysUntil(next) : null, cancelled: false };
     }, [subscription]);
+
+    // Same rule as the card: ink follows the resolved colour's luminance, since
+    // an unrecognised category keeps its persisted light colour in dark mode.
+    const heroColor = categoryColor(subscription?.category, subscription?.color);
+    const onLightHero = isLightColor(heroColor);
+    const heroInk = onLightHero ? { color: colors.primary } : undefined;
+    const heroMutedInk = onLightHero ? { color: colors.mutedForeground } : undefined;
 
     return (
         <SafeAreaView className="flex-1 bg-background">
@@ -90,12 +100,12 @@ const SubscriptionDetails = () => {
                         theme - see docs/DECISIONS.md), so the ink on top of it uses
                         the static light-theme colors, never the app's dark-mode ink,
                         or it would vanish against a light pastel in dark mode. */}
-                    <View className="detail-hero" style={subscription.color ? { backgroundColor: subscription.color } : undefined}>
+                    <View className="detail-hero" style={heroColor ? { backgroundColor: heroColor } : undefined}>
                         <SubscriptionIcon icon={subscription.icon} className="detail-hero-icon" svgSize={48} />
-                        <Text numberOfLines={2} className="detail-name" style={subscription.color ? { color: colors.primary } : undefined}>{subscription.name}</Text>
+                        <Text numberOfLines={2} className="detail-name" style={heroInk}>{subscription.name}</Text>
                         <View className="detail-price-row">
-                            <Text className="detail-price" style={subscription.color ? { color: colors.primary } : undefined}>{formatCurrency(subscription.price, subscription.currency)}</Text>
-                            <Text className="detail-billing" style={subscription.color ? { color: colors.mutedForeground } : undefined}>/ {subscription.billing}</Text>
+                            <Money value={subscription.price} currency={subscription.currency} className="detail-price" style={heroInk} />
+                            <Text className="detail-billing" style={heroMutedInk}>/ {subscription.billing}</Text>
                         </View>
                         <View className="detail-status-badge">
                             <Text className="detail-status-text">{formatStatusLabel(subscription.status)}</Text>

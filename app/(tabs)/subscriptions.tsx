@@ -1,12 +1,13 @@
-import { useCallback, useMemo, useState } from 'react';
-import { Alert, FlatList, Keyboard, Pressable, Text, TextInput, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { FlatList, Keyboard, Platform, Pressable, Text, TextInput, View } from 'react-native';
 import { SafeAreaView as RNSafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { styled } from "nativewind";
 import { Feather } from '@expo/vector-icons';
-import { useThemeColors } from "@/constants/theme";
+import { spacing, useThemeColors } from "@/constants/theme";
 import SubscriptionCard from "@/components/SubscriptionCard";
 import CreateSubscriptionModal from "@/components/CreateSubscriptionModal";
+import ConfirmDialog from "@/components/ConfirmDialog";
 import AddSubscriptionButton from "@/components/AddSubscriptionButton";
 import HydrationGate from "@/components/HydrationGate";
 import EmptySubscriptions from "@/components/EmptySubscriptions";
@@ -80,6 +81,27 @@ const Subscriptions = () => {
         return counts;
     }, [searchMatches]);
 
+    // `edgeToEdgeEnabled` is on, so on Android the window does NOT shrink when
+    // the keyboard opens - it becomes an inset the app has to handle, and
+    // softwareKeyboardLayoutMode: "resize" no longer applies. Without this the
+    // last cards sit behind the keyboard with no scroll range to reach them.
+    // iOS is handled by automaticallyAdjustKeyboardInsets on the list instead.
+    const [keyboardInset, setKeyboardInset] = useState(0);
+
+    useEffect(() => {
+        if (Platform.OS !== 'android') return;
+
+        const show = Keyboard.addListener('keyboardDidShow', (event) =>
+            setKeyboardInset(event.endCoordinates.height)
+        );
+        const hide = Keyboard.addListener('keyboardDidHide', () => setKeyboardInset(0));
+
+        return () => {
+            show.remove();
+            hide.remove();
+        };
+    }, []);
+
     const visibleSubscriptions = useMemo(() => {
         const matches =
             statusFilter === 'all'
@@ -112,6 +134,35 @@ const Subscriptions = () => {
         return <Text className="home-empty-state">No subscriptions match your search and filters.</Text>;
     };
 
+    // One pending confirmation at a time, described by the caller. Replaces
+    // Alert.alert, which can't be styled to match the app.
+    const [pendingAction, setPendingAction] = useState<{
+        title: string;
+        message: string;
+        confirmLabel: string;
+        run: () => void;
+    } | null>(null);
+
+    const confirmCancel = useCallback((subscription: Subscription) => {
+        setPendingAction({
+            title: `Cancel ${subscription.name}?`,
+            message:
+                'It stays in your list marked as cancelled and stops counting toward your spend.',
+            confirmLabel: 'Cancel it',
+            run: () => cancelSubscription(subscription.id),
+        });
+    }, [cancelSubscription]);
+
+    const confirmDelete = useCallback((subscription: Subscription) => {
+        setPendingAction({
+            title: `Delete ${subscription.name}?`,
+            message:
+                "This removes it and its history for good - there's no undo. To stop paying but keep the record, use Cancel instead.",
+            confirmLabel: 'Delete',
+            run: () => deleteSubscription(subscription.id),
+        });
+    }, [deleteSubscription]);
+
     const openCreate = useCallback(() => {
         setEditing(null);
         setIsModalVisible(true);
@@ -123,44 +174,8 @@ const Subscriptions = () => {
         setIsModalVisible(true);
     }, []);
 
-    const confirmCancel = useCallback((subscription: Subscription) => {
-        Alert.alert(
-            `Cancel ${subscription.name}?`,
-            'It stays in your list marked as cancelled and stops counting toward your spend.',
-            [
-                { text: 'Keep it', style: 'cancel' },
-                {
-                    text: 'Cancel subscription',
-                    style: 'destructive',
-                    onPress: () => {
-                        notifyDestructive();
-                        cancelSubscription(subscription.id);
-                    },
-                },
-            ]
-        );
-    }, [cancelSubscription]);
-
     // Delete is unrecoverable - there's no undo - so the copy leans hard on
     // the distinction from Cancel, which merely marks status and keeps history.
-    const confirmDelete = useCallback((subscription: Subscription) => {
-        Alert.alert(
-            `Delete ${subscription.name}?`,
-            "This permanently removes it, including its history - there's no undo. To keep the record but stop billing, use Cancel instead.",
-            [
-                { text: 'Keep it', style: 'cancel' },
-                {
-                    text: 'Delete',
-                    style: 'destructive',
-                    onPress: () => {
-                        notifyDestructive();
-                        deleteSubscription(subscription.id);
-                    },
-                },
-            ]
-        );
-    }, [deleteSubscription]);
-
     // Not destructive and fully reversible, so no confirmation - unlike Cancel/Delete.
     const togglePauseResume = useCallback((subscription: Subscription) => {
         const next: SubscriptionStatus = subscription.status?.toLowerCase() === 'paused' ? 'active' : 'paused';
@@ -273,20 +288,21 @@ const Subscriptions = () => {
                         {/* SubscriptionCard's own Pressable already toggles expand on
                             tap - this sits outside it as a distinct affordance to the
                             full detail screen, so neither gesture steals the other. */}
-                        <Pressable
-                            className="detail-link-row"
-                            onPress={() => router.push({ pathname: '/subscriptions/[id]', params: { id: item.id } })}
-                            accessibilityRole="button"
-                            accessibilityLabel={`View details for ${item.name}`}
-                            // No vertical padding on `.detail-link-row` - content is
-                            // only ~20pt tall, under the 44pt minimum. hitSlop instead
-                            // of adding padding, which would push the row away from
-                            // the card it's paired with.
-                            hitSlop={{ top: 12, bottom: 12 }}
-                        >
-                            <Text className="detail-link-text">Details</Text>
-                            <Feather name="chevron-right" size={16} color={colors.accent} />
-                        </Pressable>
+                        <View className="detail-link-row">
+                            <Pressable
+                                className="detail-link-button"
+                                onPress={() => router.push({ pathname: '/subscriptions/[id]', params: { id: item.id } })}
+                                accessibilityRole="button"
+                                accessibilityLabel={`View details for ${item.name}`}
+                                // The button's own padding gets it most of the way
+                                // to 44pt; hitSlop covers the rest without widening
+                                // the visible target again.
+                                hitSlop={{ top: 6, bottom: 6 }}
+                            >
+                                <Text className="detail-link-text">Details</Text>
+                                <Feather name="chevron-right" size={16} color={colors.accent} />
+                            </Pressable>
+                        </View>
                     </View>
                 )}
                 extraData={expandedId}
@@ -300,10 +316,28 @@ const Subscriptions = () => {
                 // the window, so adding our own spacer would double-count it.
                 automaticallyAdjustKeyboardInsets
                 ListEmptyComponent={renderEmpty()}
-                contentContainerClassName="pb-30"
+                // One source of truth: clearance for the floating tab bar,
+                // plus the keyboard on Android where the window doesn't shrink.
+                // A contentContainerStyle paddingBottom would otherwise just
+                // override the class's, dropping the tab-bar clearance.
+                contentContainerStyle={{ paddingBottom: spacing[30] + keyboardInset }}
             />
 
             <AddSubscriptionButton onPress={openCreate} />
+
+            <ConfirmDialog
+                visible={pendingAction !== null}
+                title={pendingAction?.title ?? ''}
+                message={pendingAction?.message ?? ''}
+                confirmLabel={pendingAction?.confirmLabel ?? ''}
+                destructive
+                onCancel={() => setPendingAction(null)}
+                onConfirm={() => {
+                    notifyDestructive();
+                    pendingAction?.run();
+                    setPendingAction(null);
+                }}
+            />
 
             <CreateSubscriptionModal
                 visible={isModalVisible}

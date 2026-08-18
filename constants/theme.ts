@@ -62,6 +62,9 @@ export const darkColors = {
 export const colors = lightColors;
 
 /** Resolves to the palette matching the OS appearance setting. */
+/** True when the OS is in dark mode. */
+export const useIsDarkTheme = () => useColorScheme() === "dark";
+
 export const useThemeColors = () => {
     const scheme = useColorScheme();
     return scheme === "dark" ? darkColors : lightColors;

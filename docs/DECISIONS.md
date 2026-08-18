@@ -267,3 +267,81 @@ asked a question, then stays silent at the moment the record actually changes.
 The warning haptic therefore lives in the `Alert` confirmation callback, not the
 button handler. Create/save gets a success haptic; Edit and Pause/Resume get
 nothing, being routine and reversible.
+
+## The stub: what the radius vocabulary means
+
+Before this, `global.css` had 33 radius declarations: 17 `rounded-full`, 13
+`rounded-2xl`, and exactly one asymmetric pair — `rounded-bl-4xl rounded-tr-4xl`
+on the balance card. The most distinctive gesture in the app appeared once and
+meant nothing.
+
+It's now a system. One rounded diagonal with the opposing corners left sharp
+marks **a billing artifact** — the balance card, subscription cards, upcoming
+cards, the detail hero. It reads as a torn ticket or receipt stub, which is
+genuinely of this product's world rather than imported decoration, and the
+radius scales with the card (`4xl` hero, `3xl` detail, `2xl` list cards).
+
+App chrome deliberately does *not* get it: search bar, inputs, insight panels
+stay uniformly `rounded-2xl`, controls stay `rounded-full`. So the geometry
+carries information — artifact versus container — instead of variety.
+
+If you're adding a surface, ask which it is. Don't split the difference.
+
+## Money renders through one component
+
+`components/Money.tsx` exists for tabular figures. Plus Jakarta Sans is
+proportional, so `1` is narrower than `4` and a column of prices wanders — the
+decimals don't line up, which is the exact comparison this app is for.
+
+It can't be a class: react-native-css compiles `font-variant-caps` but not
+`font-variant-numeric`, so it has to be RN's `fontVariant` style prop.
+Centralising it also means a new amount can't quietly forget it.
+
+Prose keeps `formatCurrency` directly — tabular figures mid-sentence look wrong.
+
+## Known: the palette is the default AI look
+
+`#fff9e3` warm cream with a `#ea7a53` terracotta accent is, almost exactly, the
+most common look generated design converges on. It came with the original
+template rather than being chosen here, and the dark palette was built to match
+it.
+
+Left alone deliberately: it's the product's existing identity, and replacing it
+is a call for whoever owns the brand, not a cleanup. Flagged so it's a decision
+rather than an accident. The type system has the related gap — one family
+(Plus Jakarta Sans) at four weights doing display and body both, with no
+pairing. Fixing that needs a licensed display face, which is also a choice to
+be made rather than assumed.
+
+## Icon tiles stay light in both themes
+
+Brand marks are drawn for light grounds, so the tile behind them doesn't invert.
+`--color-icon-tile` is cream in light and a dimmed ivory in dark.
+
+It used to reuse `muted`, which in dark is `#6e6151` — a muddy olive that looked
+dirty behind a logo. `muted` is deliberately light for a different reason (fixed
+dark-navy glyphs on it need 3:1), so the two uses needed separating rather than
+retuning one token for both.
+
+Note some bundled PNGs (Adobe) carry their own opaque background, so they will
+look different from the transparent ones whatever this token is. Fixing that
+means replacing the asset.
+
+## The lockfile is regenerated in a clean directory, not in place
+
+`npm ci` in CI failed four separate times on lockfile drift, and the last cause
+was the subtle one: running `npm install --package-lock-only` inside the working
+copy resolves against the `node_modules` already on disk. `bufferutil` and
+`utf-8-validate` are optional native addons of `ws` that fail to build on a
+Windows machine without MSVC, so npm had pruned them locally and then wrote a
+lockfile that omitted them. Linux CI can build them, computes an ideal tree that
+includes them, and reports `Missing: bufferutil from lock file`.
+
+Deleting the lockfile first doesn't help - npm still reuses the tree on disk. To
+regenerate it, copy `package.json` alone into an empty directory, run
+`npm install --package-lock-only` there, and copy the result back.
+
+Related earlier causes, all now covered: npm 10 (Node 20) and npm 11 (Node 24)
+resolve optional and peer deps differently, so `.nvmrc` pins the version CI
+uses; and platform-specific optional binaries have to be present for every
+platform, not just the one that generated the file.
