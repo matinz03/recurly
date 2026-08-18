@@ -57,7 +57,10 @@ export default function App() {
     // renews that week) this shows the soonest few renewals.
     const upcoming = useMemo(() => {
         return subscriptions
-            .filter((subscription) => subscription.status?.toLowerCase() !== 'cancelled')
+            // Active only. A paused plan isn't billing, so it has no renewal
+            // coming up - it used to appear here, and could even become the
+            // featured "next renewal".
+            .filter((subscription) => subscription.status?.toLowerCase() === 'active')
             .flatMap((subscription) => {
                 const next = nextRenewalDate(subscription.renewalDate, subscription.billing);
                 if (!next) return [];

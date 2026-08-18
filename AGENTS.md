@@ -18,7 +18,10 @@ known debt.
   `components/SubscriptionIcon.tsx`.
 - **Never display a raw `renewalDate` as the next renewal.** Stored dates go
   stale. Route through `nextRenewalDate()` in `lib/utils.ts`.
-- **Only `status === 'active'` counts toward spend totals.**
+- **Only active subscriptions count toward spend totals, or appear in Upcoming.**
+  Compare with `status?.toLowerCase() === 'active'`, never `=== 'active'`:
+  persisted records predate the narrowed `SubscriptionStatus` type, and an exact
+  comparison silently drops a stored `'Active'` out of every total.
 - **Never sum prices across currencies.** Group by currency instead.
 - `lib/subscriptionStore.ts` is the single source of truth. Screens derive with
   `useMemo`; they don't keep their own copies and don't read `HOME_SUBSCRIPTIONS`

@@ -187,7 +187,9 @@ describe('resolveSubscriptionCurrency', () => {
 
 describe('formatSubscriptionDateTime', () => {
     it('formats a valid date', () => {
-        expect(formatSubscriptionDateTime('2026-03-04T00:00:00.000Z')).toBe('03/04/2026');
+        // Local, not UTC: the formatter renders the parsed instant in the local
+        // zone, so a Z-suffixed midnight is the previous day west of UTC.
+        expect(formatSubscriptionDateTime('2026-03-04T12:00:00')).toBe('03/04/2026');
     });
 
     it('reports a missing date rather than rendering an empty cell', () => {

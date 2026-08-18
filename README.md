@@ -30,8 +30,9 @@ optionally the **last four digits**, never a full card number.
 **Settings** — light / system / dark, base currency, renewal reminders with a
 configurable lead time, and clearing all stored data.
 
-Everything is stored locally on the device. There is no backend: Clerk handles
-sign-in, and nothing else leaves the phone except analytics events.
+Your subscriptions are stored locally on the device and are never uploaded —
+there is no backend for them. Two services do use the network: Clerk, for
+sign-in, and PostHog, for product analytics.
 
 ## Getting started
 
@@ -73,10 +74,13 @@ don't work in Expo Go at all; they need a development build.
 
 Typecheck with `npx tsc --noEmit -p .`.
 
-CI runs all of those plus `npx expo export --platform web` on every PR. That last
-one is the only check that catches a native module being evaluated in Node during
-static prerender, and it has caught two real breakages that everything else
-passed straight through.
+On every PR, CI runs `npm ci`, the typecheck, the lint, the tests,
+`npx expo export --platform web`, and a check that `constants/brandIcons.ts`
+still matches its generator.
+
+The web export earns its place: it is the only check that catches a native module
+being evaluated in Node during static prerender, and it has caught two real
+breakages that everything else passed straight through.
 
 **None of it verifies layout, keyboard behaviour, gestures, colour or animation.**
 Every one of those has shipped broken here with a fully green check run. Those

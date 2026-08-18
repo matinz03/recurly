@@ -89,14 +89,21 @@ Prioritised by "how badly does its absence hurt a real user", not by effort.
       `lib/haptics.ts`. Create is not wired: the only hookable point is the
       modal's submit handler, in files outside this change's scope
       (`components/CreateSubscriptionModal.tsx`, `app/(tabs)/*.tsx`).
-- [ ] **Accessibility pass.** Interactive elements have labels, but the card
-      itself doesn't announce expanded state, and contrast on
-      `muted-foreground` over `card` is untested against WCAG AA.
+- [ ] **Accessibility pass, on a device.** The wiring is done and documented in
+      `docs/ACCESSIBILITY.md`: composed row labels, `accessibilityState.expanded`
+      on the card toggle, radio roles and selected state on the pickers, live
+      regions behind the hydration gates, and card ink chosen by measured
+      luminance with a test that keeps every category colour on the right side of
+      the threshold. What's left is the part no code change settles - a real
+      VoiceOver and TalkBack pass, `muted-foreground` on `card` checked against
+      WCAG AA with a contrast tool, and behaviour at large accessibility font
+      sizes, where several fixed-height rows will probably clip.
 - [x] **Dark mode.** Follows `userInterfaceStyle: "automatic"` via
       `@media (prefers-color-scheme: dark)` CSS-variable overrides in
       `global.css`, plus a `useThemeColors()` hook in `constants/theme.ts`
       for the JS-side colours (vector-icon `color` props, placeholders,
-      `ActivityIndicator`). No in-app toggle - see docs/DECISIONS.md for the
+      `ActivityIndicator`). A light/system/dark override now sits in Settings,
+      applied through `Appearance.setColorScheme` - see docs/DECISIONS.md for the
       palette rationale, the two bundled-PNG-icon constraints it works
       around, and why category colours and the tab bar stay fixed.
 - [x] **Settings screen is account-only.** Added `lib/preferencesStore.ts`
@@ -105,14 +112,14 @@ Prioritised by "how badly does its absence hurt a real user", not by effort.
       `lib/notifications.ts` reads both from the store instead of its old
       module constant, and `lib/useRenewalReminders.ts` also subscribes to
       the preferences store so a change takes effect immediately rather than
-      waiting for the next subscription edit. "Clear stored data" resets
-      subscriptions via `useSubscriptionStore.persist.clearStorage()` plus
-      `setState({ subscriptions: [] })` (subscriptionStore.ts stayed
-      untouched) and preferences via a `resetPreferences` action, behind an
-      `Alert` confirmation. No display-currency preference yet - the app
-      still never sums across currencies (see "Never sum across
-      currencies" above), so there's nothing for a single preferred
-      currency to control without reintroducing FX conversion.
+      waiting for the next subscription edit. "Clear stored data" calls
+      `clearSubscriptions()` and `resetPreferences()`, both of which persist an
+      empty/default state rather than removing the key - `clearStorage()` isn't
+      awaitable and races the next write, which could resurrect the seed list -
+      behind a themed `components/ConfirmDialog.tsx`. A base-currency preference
+      was added later: amounts are entered in it and new records adopt it, while
+      existing records keep the currency they were priced in, and the app still
+      never sums across currencies.
 
 ## Known cosmetic debt
 

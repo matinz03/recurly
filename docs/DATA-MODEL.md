@@ -54,8 +54,10 @@ Cancelling **marks** a subscription; it never deletes it. The record is the
 history of what you used to pay for, and deleting it silently would lose that.
 Delete is a separate, explicitly destructive action.
 
-Statuses are compared with `.toLowerCase()` throughout, because persisted records
-predate the narrowed type.
+Statuses are compared with `.toLowerCase()` throughout, and deliberately not with
+`=== 'active'`. The type narrowed to lowercase after records had already been
+persisted, so an exact comparison would silently drop a stored `'Active'` out of
+every total and out of Upcoming - the opposite of what the rule is for.
 
 ## Persistence
 

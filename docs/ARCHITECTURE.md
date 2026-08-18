@@ -45,9 +45,11 @@ Two persisted zustand stores, and no other durable state. See
 list, and no screen reads `HOME_SUBSCRIPTIONS` directly (that constant is only
 the store's seed).
 
-Derived values (upcoming renewals, monthly spend, category breakdown) are
-computed with `useMemo` in the screen that needs them, from helpers in
-`lib/utils.ts`. Nothing derived is stored.
+Derived values are computed at render time from pure helpers; nothing derived is
+stored. Upcoming renewals and Home's totals are `useMemo`'d in the screen from
+`lib/utils.ts`. The Insights figures are the exception: `computeInsights` in
+`lib/insights.ts` returns all of them, because the multi-currency rules needed to
+be testable outside a render.
 
 The store persists to AsyncStorage. Icons are stored as a serialisable
 discriminator rather than the value itself — see DECISIONS.md, and don't
