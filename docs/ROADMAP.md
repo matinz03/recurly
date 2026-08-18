@@ -139,9 +139,12 @@ Prioritised by "how badly does its absence hurt a real user", not by effort.
 
 ## Not verified anywhere
 
-Layout, keyboard, gesture and notification behaviour are not verified by any
-automated check — every screen sits behind Clerk sign-in, so the web preview
-can't reach them, and the date picker, blur and notifications are native-only.
+Layout, keyboard, gesture behaviour and native notification delivery are not
+verified by any automated check — every screen sits behind Clerk sign-in, so the
+web preview can't reach them, and the date picker, blur and notifications are
+native-only. Reminder *timing* is covered by
+`lib/__tests__/notifications.test.ts`; what isn't covered is whether a scheduled
+reminder actually arrives, and how permissions and channels behave on a device.
 
 Track record, as a warning: the modal sheet sizing was wrong twice, the Android
 keyboard inset twice, and the expand animation three times, each after a green
