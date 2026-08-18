@@ -82,9 +82,12 @@ The web export earns its place: it is the only check that catches a native modul
 being evaluated in Node during static prerender, and it has caught two real
 breakages that everything else passed straight through.
 
-**None of it verifies layout, keyboard behaviour, gestures, colour or animation.**
-Every one of those has shipped broken here with a fully green check run. Those
-need a device.
+**None of it verifies how any of this looks or behaves on a phone** — layout,
+keyboard insets, gestures, animation, or whether a colour reads correctly in
+place. Every one of those has shipped broken here with a fully green check run.
+The tests do cover the colour *logic* (which ink a card picks, and that every
+category value stays on the right side of that threshold); seeing it is still a
+device job.
 
 ## How it fits together
 
