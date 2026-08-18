@@ -16,14 +16,32 @@ Prioritised by "how badly does its absence hurt a real user", not by effort.
 - [x] **Unit tests.** `jest-expo` (pinned to 54.x — latest peer-requires a newer
       React than SDK 54 ships). Covers the date/money helpers and the store,
       including the icon persistence round trip.
-- [x] **Renewal notifications.** Local scheduled reminders a couple of days
-      before each active renewal — see `lib/notifications.ts`. Expo Go's *push*
-      (remote) support is limited on recent SDKs, but local scheduling works
-      there; no development build needed for this specifically.
+- [x] **Renewal notifications.** Local scheduled reminders a configurable number
+      of days before each active renewal — see `lib/notifications.ts`. Needs a
+      development build: `expo-notifications` is disabled outright in Expo Go
+      (`isRunningInExpoGo()`), because a top-level import registers a push-token
+      side effect that red-boxes there. The module is imported lazily for the
+      same reason.
 - [x] **Subscription detail route.** `app/subscriptions/[id].tsx` was a dead
       stub nothing linked to; it now shows the full record and is reachable from
       the list.
 - [x] **Delete, pause/resume, status filters.**
+- [x] **Appearance, currency and reminder preferences.** `lib/preferencesStore.ts`
+      plus a Settings screen: light/system/dark, base currency, reminders on/off
+      with a lead-time picker, and clear-all-data. Startup waits on this store's
+      hydration so the first frame can't render in the wrong theme.
+- [x] **Themed confirmations.** `components/ConfirmDialog.tsx` replaces
+      `Alert.alert` everywhere, so destructive confirmations follow the app's
+      palette and type instead of the OS's.
+- [x] **Card payment label, safely.** A card name plus optional last four digits,
+      with PAN-like input rejected outright. Editing a subscription no longer
+      overwrites the currency it was priced in.
+- [x] **Test coverage over the risky logic.** Seven suites, ~100 assertions. The
+      Insights aggregation moved into `lib/insights.ts` to make its
+      multi-currency rules testable; reminder timing, icon matching and the type
+      guards are covered too.
+- [x] **Project documentation.** Architecture, data model, decisions,
+      accessibility, contributing, and a README that says what the app does.
 
 ## P0
 
@@ -31,10 +49,10 @@ Prioritised by "how badly does its absence hurt a real user", not by effort.
       presents the seed list as real. The detail route mattered most: it was
       claiming a real subscription "couldn't be found" whenever a deep link beat
       hydration.
-- [ ] **`expo export` belongs in the verification loop.** Typecheck, lint and
+- [x] **`expo export` belongs in the verification loop.** Typecheck, lint and
       tests all passed clean while the web build was completely broken by a
-      native module touching `window` during static prerender. CI runs it now;
-      remember it locally too.
+      native module touching `window` during static prerender. It's a CI step
+      now, and it's in the gate list in `docs/CONTRIBUTING.md` and `AGENTS.md`.
 
 ## P1
 
@@ -62,12 +80,11 @@ Prioritised by "how badly does its absence hurt a real user", not by effort.
 
 ## P2 — polish with real payoff
 
-- [x] **Expand/collapse animation.** Core RN `LayoutAnimation`, not
-      `react-native-reanimated` - same reasoning as docs/DECISIONS.md's
-      "Drag-to-dismiss uses PanResponder, not gesture-handler" entry: the
-      built-in API needs no setup and animates the height change (plus a
-      body fade) without measuring, and is skipped when the OS has
-      reduce-motion on.
+- [x] **Expand/collapse animation.** A measured-height Reanimated accordion,
+      after `LayoutAnimation` barely played under the new architecture and
+      `entering`/`exiting` broke the closing direction. Honours reduce-motion.
+      Three attempts, all recorded in docs/DECISIONS.md - read that before
+      touching it.
 - [x] **Haptics** on expand, and on starting a cancel/delete flow - see
       `lib/haptics.ts`. Create is not wired: the only hookable point is the
       modal's submit handler, in files outside this change's scope
@@ -115,8 +132,14 @@ Prioritised by "how badly does its absence hurt a real user", not by effort.
 
 ## Not verified anywhere
 
-Layout, keyboard, gesture and notification behaviour have never been exercised
-on a device or simulator — every screen sits behind Clerk sign-in, so the web
-preview can't reach them, and the date picker and blur are native-only. The
-modal sheet sizing in particular was wrong twice before landing on its current
-form. Treat all of it as unproven until someone runs it.
+Layout, keyboard, gesture and notification behaviour are not verified by any
+automated check — every screen sits behind Clerk sign-in, so the web preview
+can't reach them, and the date picker, blur and notifications are native-only.
+
+Track record, as a warning: the modal sheet sizing was wrong twice, the Android
+keyboard inset twice, and the expand animation three times, each after a green
+check run. Device feedback is the only thing that has caught any of it.
+
+Also unverified: no screen-reader pass (VoiceOver or TalkBack), no automated a11y
+checks, and no testing at large accessibility font sizes — several rows are
+fixed-height and will likely clip. See `docs/ACCESSIBILITY.md`.
