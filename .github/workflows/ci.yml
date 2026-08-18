@@ -16,9 +16,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Must match the Node/npm used locally. npm 10 (Node 20) and npm 11
+      # (Node 24) resolve optional and peer deps differently, so a lockfile
+      # written by one fails `npm ci` under the other - which is exactly how
+      # this workflow broke.
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version-file: .nvmrc
           cache: npm
 
       - name: Install
