@@ -7,6 +7,7 @@ import { clsx } from 'clsx';
 import dayjs, { type Dayjs } from 'dayjs';
 import { icons } from '@/constants/icons';
 import { CATEGORIES, CATEGORY_COLORS, isCategory, type Category } from '@/constants/categories';
+import { usePreferencesStore } from '@/lib/preferencesStore';
 import { useThemeColors } from '@/constants/theme';
 import { posthog } from '@/lib/posthog';
 import { findDuplicateSubscriptionByName, nextRenewalDate } from '@/lib/utils';
@@ -25,13 +26,14 @@ interface CreateSubscriptionModalProps {
 }
 
 type Frequency = 'Monthly' | 'Yearly';
-type Currency = 'USD' | 'EUR' | 'GBP' | 'CAD' | 'JPY';
+
+/** Matches the shape paymentMethod is stored in, e.g. "Visa ending in 8530". */
+const PAYMENT_METHOD = /^(.*?) ending in (\d{4})$/;
 
 // Plain decimal only: digits with at most one decimal point.
 const DECIMAL_PRICE = /^\d*\.?\d+$/;
 
 const FREQUENCIES: Frequency[] = ['Monthly', 'Yearly'];
-const CURRENCIES: Currency[] = ['USD', 'EUR', 'GBP', 'CAD', 'JPY'];
 
 // Fixed pastels, not theme tokens - these are data (a category identifier
 // that gets persisted on the subscription and rendered as a card
@@ -39,20 +41,21 @@ const CURRENCIES: Currency[] = ['USD', 'EUR', 'GBP', 'CAD', 'JPY'];
 // dark mode. They stay light in both themes, and SubscriptionCard/[id].tsx
 // paint the ink on top of them with the static light-theme colors for the
 // same reason - see docs/DECISIONS.md.
-const isCurrency = (value?: string): value is Currency =>
-    !!value && (CURRENCIES as string[]).includes(value);
-
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 const CreateSubscriptionModal = ({ visible, onClose, onSubmit, subscription, existingSubscriptions }: CreateSubscriptionModalProps) => {
     const colors = useThemeColors();
     const isEditing = !!subscription;
+    // One base currency for the whole app, chosen in Settings - amounts are
+    // entered and stored in it rather than each subscription carrying its own.
+    const baseCurrency = usePreferencesStore((state) => state.baseCurrency);
 
     const [name, setName] = useState('');
     const [price, setPrice] = useState('');
     const [frequency, setFrequency] = useState<Frequency>('Monthly');
-    const [currency, setCurrency] = useState<Currency>('USD');
     const [category, setCategory] = useState<Category>('Other');
+    const [cardLabel, setCardLabel] = useState('');
+    const [cardLast4, setCardLast4] = useState('');
     const [startDate, setStartDate] = useState<Dayjs>(() => dayjs());
     const [showIosDatePicker, setShowIosDatePicker] = useState(false);
 
@@ -64,10 +67,13 @@ const CreateSubscriptionModal = ({ visible, onClose, onSubmit, subscription, exi
             setName(subscription.name);
             setPrice(String(subscription.price));
             setFrequency(subscription.billing?.toLowerCase() === 'yearly' ? 'Yearly' : 'Monthly');
-            // Preserve the existing currency rather than resetting to USD, so
-            // editing a non-USD subscription can't silently change its currency.
-            setCurrency(isCurrency(subscription.currency) ? subscription.currency : 'USD');
             setCategory(isCategory(subscription.category) ? subscription.category : 'Other');
+            // Stored as a single string ("Visa ending in 8530"). Split it back
+            // apart when it matches; otherwise treat the whole thing as the
+            // label so an imported value isn't silently dropped on save.
+            const parsed = PAYMENT_METHOD.exec(subscription.paymentMethod?.trim() ?? '');
+            setCardLabel(parsed ? parsed[1] : subscription.paymentMethod?.trim() ?? '');
+            setCardLast4(parsed ? parsed[2] : '');
             setStartDate(subscription.startDate ? dayjs(subscription.startDate) : dayjs());
         }
         setShowIosDatePicker(false);
@@ -99,8 +105,9 @@ const CreateSubscriptionModal = ({ visible, onClose, onSubmit, subscription, exi
         setName('');
         setPrice('');
         setFrequency('Monthly');
-        setCurrency('USD');
         setCategory('Other');
+        setCardLabel('');
+        setCardLast4('');
         setStartDate(dayjs());
         // Otherwise an iOS calendar left open is still expanded on reopen.
         setShowIosDatePicker(false);
@@ -117,8 +124,17 @@ const CreateSubscriptionModal = ({ visible, onClose, onSubmit, subscription, exi
     const dragY = useRef(new Animated.Value(0)).current;
     const panResponder = useRef(
         PanResponder.create({
+            // Claiming on touch-down is what makes this work at all. The sheet
+            // container is a Pressable, so it claimed the responder on start
+            // and the move negotiation below was never reached - the drag could
+            // never begin. This view is deeper than that container so it wins
+            // the start negotiation, while the close button (deeper still) keeps
+            // its own taps.
+            onStartShouldSetPanResponder: () => true,
             onMoveShouldSetPanResponder: (_event, gestureState) =>
                 gestureState.dy > 5 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx),
+            // Don't hand the gesture to the ScrollView mid-drag.
+            onPanResponderTerminationRequest: () => false,
             onPanResponderMove: (_event, gestureState) => {
                 if (gestureState.dy > 0) dragY.setValue(gestureState.dy);
             },
@@ -179,8 +195,19 @@ const CreateSubscriptionModal = ({ visible, onClose, onSubmit, subscription, exi
         // icon isn't lost to a name that no longer matches anything.
         const icon = matchedIcon ?? (isEditing && trimmedName === subscription.name ? subscription.icon : icons.plus);
 
+        // Only a label and the last four digits are ever collected - never a
+        // full card number. That's all this needs to identify which card pays
+        // for what, and storing more would make this a payment-data problem.
+        const trimmedCard = cardLabel.trim();
+        const paymentMethod = trimmedCard
+            ? cardLast4.length === 4
+                ? `${trimmedCard} ending in ${cardLast4}`
+                : trimmedCard
+            : undefined;
+
         onSubmit({
             ...(subscription ?? {}),
+            paymentMethod,
             id: subscription?.id ?? `sub-${Date.now()}`,
             icon,
             name: trimmedName,
@@ -188,7 +215,7 @@ const CreateSubscriptionModal = ({ visible, onClose, onSubmit, subscription, exi
             status: subscription?.status ?? 'active',
             startDate: startDate.toISOString(),
             price: priceValue,
-            currency,
+            currency: baseCurrency,
             billing: frequency,
             renewalDate: renewalDate.toISOString(),
             color: CATEGORY_COLORS[category],
@@ -295,23 +322,25 @@ const CreateSubscriptionModal = ({ visible, onClose, onSubmit, subscription, exi
                             </View>
 
                             <View className="auth-field">
-                                <Text className="auth-label">Currency</Text>
-                                <View className="picker-row" accessibilityRole="radiogroup">
-                                    {CURRENCIES.map((option) => (
-                                        <Pressable
-                                            key={option}
-                                            className={clsx('picker-option', currency === option && 'picker-option-active')}
-                                            onPress={() => setCurrency(option)}
-                                            accessibilityRole="radio"
-                                            accessibilityLabel={option}
-                                            accessibilityState={{ selected: currency === option }}
-                                        >
-                                            <Text className={clsx('picker-option-text', currency === option && 'picker-option-text-active')}>
-                                                {option}
-                                            </Text>
-                                        </Pressable>
-                                    ))}
-                                </View>
+                                <Text className="auth-label">Paid with</Text>
+                                <TextInput
+                                    className="auth-input"
+                                    placeholder="Card name, e.g. Visa or Personal Amex"
+                                    placeholderTextColor={colors.placeholder}
+                                    value={cardLabel}
+                                    onChangeText={setCardLabel}
+                                />
+                                {/* Last four only - enough to tell cards apart,
+                                    without holding card numbers. */}
+                                <TextInput
+                                    className="auth-input"
+                                    placeholder="Last 4 digits (optional)"
+                                    placeholderTextColor={colors.placeholder}
+                                    value={cardLast4}
+                                    onChangeText={(text) => setCardLast4(text.replace(/[^0-9]/g, ''))}
+                                    keyboardType="number-pad"
+                                    maxLength={4}
+                                />
                             </View>
 
                             <View className="auth-field">

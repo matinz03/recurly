@@ -24,6 +24,12 @@ const SafeAreaView = styled(RNSafeAreaView);
 /** How many renewals the Upcoming carousel shows. */
 const UPCOMING_LIMIT = 5;
 
+/**
+ * Home is a dashboard, not the full list - "View all" goes to the Subscriptions
+ * tab for the rest. Without this the two screens showed the same thing.
+ */
+const HOME_LIST_LIMIT = 5;
+
 /** Stable reference so the hydration fallback can't bust useMemo deps. */
 const NO_SUBSCRIPTIONS: Subscription[] = [];
 
@@ -150,7 +156,7 @@ export default function App() {
                             />
                         </>
                     }
-                    data={subscriptions}
+                    data={subscriptions.slice(0, HOME_LIST_LIMIT)}
                     keyExtractor={(item) => item.id}
                     renderItem={({ item }) => (
                         <SubscriptionCard

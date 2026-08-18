@@ -7,6 +7,7 @@ import { useThemeColors } from '@/constants/theme';
 import { posthog } from '@/lib/posthog';
 import { notifyDestructive } from '@/lib/haptics';
 import { REMINDER_LEAD_DAY_OPTIONS, usePreferencesStore, type ReminderLeadDays } from '@/lib/preferencesStore';
+import { CURRENCIES } from '@/constants/currencies';
 import { useSubscriptionStore } from '@/lib/subscriptionStore';
 import { useState } from 'react';
 import { clsx } from 'clsx';
@@ -26,6 +27,8 @@ const Settings = () => {
     const setReminderLeadDays = usePreferencesStore((state) => state.setReminderLeadDays);
     const resetPreferences = usePreferencesStore((state) => state.resetPreferences);
     const clearSubscriptions = useSubscriptionStore((state) => state.clearSubscriptions);
+    const baseCurrency = usePreferencesStore((state) => state.baseCurrency);
+    const setBaseCurrency = usePreferencesStore((state) => state.setBaseCurrency);
 
     const handleSignOut = async () => {
         if (isSigningOut) return;
@@ -121,6 +124,30 @@ const Settings = () => {
                             {user?.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}
                         </Text>
                     </View>
+                </View>
+            </View>
+
+            <View className="auth-card mb-5">
+                <Text className="text-base font-sans-semibold text-primary mb-3">Currency</Text>
+                <Text className="settings-row-helper mb-3">
+                    Amounts are entered and stored in this currency. Changing it doesn&apos;t convert
+                    what you&apos;ve already saved.
+                </Text>
+                <View className="picker-row" accessibilityRole="radiogroup">
+                    {CURRENCIES.map((option) => (
+                        <Pressable
+                            key={option}
+                            className={clsx('picker-option', baseCurrency === option && 'picker-option-active')}
+                            onPress={() => setBaseCurrency(option)}
+                            accessibilityRole="radio"
+                            accessibilityLabel={option}
+                            accessibilityState={{ selected: baseCurrency === option }}
+                        >
+                            <Text className={clsx('picker-option-text', baseCurrency === option && 'picker-option-text-active')}>
+                                {option}
+                            </Text>
+                        </Pressable>
+                    ))}
                 </View>
             </View>
 

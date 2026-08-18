@@ -1,4 +1,5 @@
 import {View, Text, Pressable} from 'react-native'
+import Animated, {FadeIn, FadeOut, LinearTransition, ReduceMotion} from 'react-native-reanimated'
 import React from 'react'
 import {Feather} from '@expo/vector-icons'
 import {formatCurrency, formatStatusLabel, formatSubscriptionDateTime} from "@/lib/utils";
@@ -50,6 +51,7 @@ const SubscriptionCard = ({ name, price, currency, icon, billing, color, categor
                 unreachable to a screen reader. Scoping it to just the head
                 also composes cleanly with `accessibilityState.expanded`,
                 which announces the toggle's current state. */}
+            <Animated.View layout={LinearTransition.duration(220).reduceMotion(ReduceMotion.System)}>
             <Pressable
                 onPress={onPress}
                 className="sub-head"
@@ -81,7 +83,11 @@ const SubscriptionCard = ({ name, price, currency, icon, billing, color, categor
             </Pressable>
 
             {expanded && (
-                <View className="sub-body">
+                <Animated.View
+                    className="sub-body"
+                    entering={FadeIn.duration(180).reduceMotion(ReduceMotion.System)}
+                    exiting={FadeOut.duration(120).reduceMotion(ReduceMotion.System)}
+                >
                     <View className="sub-details">
                         <View className="sub-row">
                             <View className="sub-row-copy">
@@ -173,8 +179,9 @@ const SubscriptionCard = ({ name, price, currency, icon, billing, color, categor
                             )}
                         </View>
                     )}
-                </View>
+                </Animated.View>
             )}
+            </Animated.View>
         </View>
     )
 }
