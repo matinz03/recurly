@@ -2,6 +2,7 @@ import {View, Text} from 'react-native'
 import React from 'react'
 import {formatCurrency} from "@/lib/utils";
 import SubscriptionIcon from "@/components/SubscriptionIcon";
+import Money from "@/components/Money";
 
 const UpcomingSubscriptionCard = ({ name, price, daysLeft, icon, currency }: UpcomingSubscriptionCardProps) => {
     const renewalText = daysLeft === 0 ? 'Renews today' : daysLeft === 1 ? 'Renews tomorrow' : `${daysLeft} days left`;
@@ -20,7 +21,7 @@ const UpcomingSubscriptionCard = ({ name, price, daysLeft, icon, currency }: Upc
             <View className="upcoming-row">
                 <SubscriptionIcon icon={icon} className="upcoming-icon" svgSize={32} />
                 <View>
-                    <Text className="upcoming-price">{formatCurrency(price, currency)}</Text>
+                    <Money value={price} currency={currency} className="upcoming-price" />
                     <Text className="upcoming-meta" numberOfLines={1}>
                         {renewalText}
                     </Text>

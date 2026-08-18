@@ -267,3 +267,48 @@ asked a question, then stays silent at the moment the record actually changes.
 The warning haptic therefore lives in the `Alert` confirmation callback, not the
 button handler. Create/save gets a success haptic; Edit and Pause/Resume get
 nothing, being routine and reversible.
+
+## The stub: what the radius vocabulary means
+
+Before this, `global.css` had 33 radius declarations: 17 `rounded-full`, 13
+`rounded-2xl`, and exactly one asymmetric pair — `rounded-bl-4xl rounded-tr-4xl`
+on the balance card. The most distinctive gesture in the app appeared once and
+meant nothing.
+
+It's now a system. One rounded diagonal with the opposing corners left sharp
+marks **a billing artifact** — the balance card, subscription cards, upcoming
+cards, the detail hero. It reads as a torn ticket or receipt stub, which is
+genuinely of this product's world rather than imported decoration, and the
+radius scales with the card (`4xl` hero, `3xl` detail, `2xl` list cards).
+
+App chrome deliberately does *not* get it: search bar, inputs, insight panels
+stay uniformly `rounded-2xl`, controls stay `rounded-full`. So the geometry
+carries information — artifact versus container — instead of variety.
+
+If you're adding a surface, ask which it is. Don't split the difference.
+
+## Money renders through one component
+
+`components/Money.tsx` exists for tabular figures. Plus Jakarta Sans is
+proportional, so `1` is narrower than `4` and a column of prices wanders — the
+decimals don't line up, which is the exact comparison this app is for.
+
+It can't be a class: react-native-css compiles `font-variant-caps` but not
+`font-variant-numeric`, so it has to be RN's `fontVariant` style prop.
+Centralising it also means a new amount can't quietly forget it.
+
+Prose keeps `formatCurrency` directly — tabular figures mid-sentence look wrong.
+
+## Known: the palette is the default AI look
+
+`#fff9e3` warm cream with a `#ea7a53` terracotta accent is, almost exactly, the
+most common look generated design converges on. It came with the original
+template rather than being chosen here, and the dark palette was built to match
+it.
+
+Left alone deliberately: it's the product's existing identity, and replacing it
+is a call for whoever owns the brand, not a cleanup. Flagged so it's a decision
+rather than an accident. The type system has the related gap — one family
+(Plus Jakarta Sans) at four weights doing display and body both, with no
+pairing. Fixing that needs a licensed display face, which is also a choice to
+be made rather than assumed.

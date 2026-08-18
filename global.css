@@ -38,7 +38,6 @@
     --spacing-30: 120px;
 
     --font-sans: sans-regular;
-    --font-sans-light: sans-light;
     --font-sans-medium: sans-medium;
     --font-sans-semibold: sans-semibold;
     --font-sans-bold: sans-bold;
@@ -127,7 +126,7 @@
     }
 
     .home-balance-amount {
-        @apply text-4xl font-sans-extrabold text-white;
+        @apply text-4xl font-sans-extrabold tracking-tight text-white;
     }
 
     .home-balance-date {
@@ -154,8 +153,9 @@
         @apply text-lg font-sans-semibold text-primary;
     }
 
+    /* Stub geometry - see docs/DECISIONS.md. Radius scales with the card. */
     .upcoming-card {
-        @apply mr-4 w-44 rounded-2xl border border-black/10 bg-background p-4 dark:border-white/10;
+        @apply mr-4 w-44 rounded-bl-2xl rounded-tr-2xl border border-black/10 bg-background p-4 dark:border-white/10;
     }
 
     .upcoming-row {
@@ -191,7 +191,7 @@
     }
 
     .sub-card {
-        @apply rounded-2xl border border-border p-4;
+        @apply rounded-bl-2xl rounded-tr-2xl border border-border p-4;
     }
 
     .sub-card-expanded {
@@ -333,7 +333,7 @@
     }
 
     .insights-stat-value {
-        @apply text-2xl font-sans-extrabold text-primary;
+        @apply text-2xl font-sans-extrabold tracking-tight text-primary;
     }
 
     .insights-stat-meta {
@@ -425,7 +425,7 @@
     }
 
     .auth-wordmark {
-        @apply text-3xl font-sans-extrabold text-primary;
+        @apply text-3xl font-sans-extrabold tracking-tight text-primary;
     }
 
     .auth-wordmark-sub {
@@ -645,7 +645,7 @@
     }
 
     .detail-hero {
-        @apply items-center gap-3 rounded-3xl border border-border bg-card p-6;
+        @apply items-center gap-3 rounded-bl-3xl rounded-tr-3xl border border-border bg-card p-6;
     }
 
     /* dark:bg-muted - see .upcoming-icon above; same fixed-PNG-fallback reason. */

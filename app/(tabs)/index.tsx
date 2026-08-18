@@ -7,6 +7,7 @@ import {daysUntil, formatCurrency, nextRenewalDate, totalsByCurrency} from "@/li
 import dayjs from "dayjs";
 import ListHeading from "@/components/ListHeading";
 import UpcomingSubscriptionCard from "@/components/UpcomingSubscriptionCard";
+import Money from "@/components/Money";
 import SubscriptionCard from "@/components/SubscriptionCard";
 import CreateSubscriptionModal from "@/components/CreateSubscriptionModal";
 import AddSubscriptionButton from "@/components/AddSubscriptionButton";
@@ -108,9 +109,11 @@ export default function App() {
                                 <Text className="home-balance-label">Monthly spend</Text>
 
                                 <View className="home-balance-row">
-                                    <Text className="home-balance-amount">
-                                        {formatCurrency(dominantTotal?.monthly ?? 0, dominantTotal?.currency)}
-                                    </Text>
+                                    <Money
+                                        value={dominantTotal?.monthly ?? 0}
+                                        currency={dominantTotal?.currency}
+                                        className="home-balance-amount"
+                                    />
                                     <Text className="home-balance-date">
                                         {nextRenewal ? dayjs(nextRenewal.renewsAt).format('MM/DD') : '--'}
                                     </Text>

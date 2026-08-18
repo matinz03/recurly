@@ -6,9 +6,10 @@ import { useMemo } from 'react';
 import { icons } from '@/constants/icons';
 import { colors } from '@/constants/theme';
 import SubscriptionIcon from '@/components/SubscriptionIcon';
+import Money from '@/components/Money';
 import HydrationGate from '@/components/HydrationGate';
 import { useSubscriptionStore } from '@/lib/subscriptionStore';
-import { daysUntil, formatCurrency, formatStatusLabel, formatSubscriptionDateTime, nextRenewalDate } from '@/lib/utils';
+import { daysUntil, formatStatusLabel, formatSubscriptionDateTime, nextRenewalDate } from '@/lib/utils';
 
 const SafeAreaView = styled(RNSafeAreaView);
 
@@ -94,7 +95,7 @@ const SubscriptionDetails = () => {
                         <SubscriptionIcon icon={subscription.icon} className="detail-hero-icon" svgSize={48} />
                         <Text numberOfLines={2} className="detail-name" style={subscription.color ? { color: colors.primary } : undefined}>{subscription.name}</Text>
                         <View className="detail-price-row">
-                            <Text className="detail-price" style={subscription.color ? { color: colors.primary } : undefined}>{formatCurrency(subscription.price, subscription.currency)}</Text>
+                            <Money value={subscription.price} currency={subscription.currency} className="detail-price" style={subscription.color ? { color: colors.primary } : undefined} />
                             <Text className="detail-billing" style={subscription.color ? { color: colors.mutedForeground } : undefined}>/ {subscription.billing}</Text>
                         </View>
                         <View className="detail-status-badge">

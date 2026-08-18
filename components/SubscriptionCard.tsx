@@ -3,6 +3,7 @@ import React from 'react'
 import {Feather} from '@expo/vector-icons'
 import {formatCurrency, formatStatusLabel, formatSubscriptionDateTime} from "@/lib/utils";
 import SubscriptionIcon from "@/components/SubscriptionIcon";
+import Money from "@/components/Money";
 import {colors, useThemeColors} from "@/constants/theme";
 import { clsx } from "clsx";
 
@@ -68,7 +69,7 @@ const SubscriptionCard = ({ name, price, currency, icon, billing, color, categor
                 </View>
 
                 <View className="sub-price-box">
-                    <Text className="sub-price" style={fixedInkStyle}>{formatCurrency(price, currency)}</Text>
+                    <Money value={price} currency={currency} className="sub-price" style={fixedInkStyle} />
                     <Text className="sub-billing" style={fixedMutedStyle}>{billing}</Text>
                 </View>
             </Pressable>

@@ -65,7 +65,6 @@ function RootLayoutContent() {
     "sans-medium": require("../assets/fonts/PlusJakartaSans-Medium.ttf"),
     "sans-semibold": require("../assets/fonts/PlusJakartaSans-SemiBold.ttf"),
     "sans-extrabold": require("../assets/fonts/PlusJakartaSans-ExtraBold.ttf"),
-    "sans-light": require("../assets/fonts/PlusJakartaSans-Light.ttf"),
   });
   const { isLoaded: authLoaded } = useAuth();
   const fontsReady = fontsLoaded || !!fontError;
