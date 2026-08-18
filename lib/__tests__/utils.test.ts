@@ -1,25 +1,19 @@
 import dayjs from 'dayjs';
 import {
     containsCardNumber,
+    daysUntil,
     findDuplicateSubscriptionByName,
     formatCurrency,
+    formatStatusLabel,
+    formatSubscriptionDateTime,
+    isLightColor,
     monthlyPrice,
     nextRenewalDate,
     resolveSubscriptionCurrency,
     totalsByCurrency,
 } from '@/lib/utils';
+import { subscription } from '@/test-utils/factories';
 
-const subscription = (overrides: Partial<Subscription> = {}): Subscription => ({
-    id: 'test',
-    icon: 1,
-    name: 'Test',
-    price: 10,
-    billing: 'Monthly',
-    // totalsByCurrency filters on status, so the shared factory needs a
-    // default that counts - individual tests override it to prove exclusion.
-    status: 'active',
-    ...overrides,
-});
 
 describe('formatCurrency', () => {
     it('formats to two decimal places', () => {
@@ -188,5 +182,95 @@ describe('resolveSubscriptionCurrency', () => {
     it('keeps what an existing subscription was priced in', () => {
         // Editing an unrelated field must not re-denominate a stored amount.
         expect(resolveSubscriptionCurrency('USD', 'EUR')).toBe('USD');
+    });
+});
+
+describe('formatSubscriptionDateTime', () => {
+    it('formats a valid date', () => {
+        expect(formatSubscriptionDateTime('2026-03-04T00:00:00.000Z')).toBe('03/04/2026');
+    });
+
+    it('reports a missing date rather than rendering an empty cell', () => {
+        expect(formatSubscriptionDateTime(undefined)).toBe('Not provided');
+        expect(formatSubscriptionDateTime('')).toBe('Not provided');
+    });
+
+    it('reports an unparseable date the same way', () => {
+        expect(formatSubscriptionDateTime('not a date')).toBe('Not provided');
+    });
+});
+
+describe('formatStatusLabel', () => {
+    it('capitalises a stored status', () => {
+        expect(formatStatusLabel('active')).toBe('Active');
+        expect(formatStatusLabel('cancelled')).toBe('Cancelled');
+    });
+
+    it('leaves an already-capitalised value alone', () => {
+        expect(formatStatusLabel('Paused')).toBe('Paused');
+    });
+
+    it('names a missing status rather than showing nothing', () => {
+        expect(formatStatusLabel(undefined)).toBe('Unknown');
+        expect(formatStatusLabel('')).toBe('Unknown');
+    });
+});
+
+describe('daysUntil', () => {
+    it('counts whole days ahead', () => {
+        const target = dayjs().add(3, 'day').add(2, 'hour');
+        expect(daysUntil(target)).toBe(3);
+    });
+
+    it('returns 0 for later today', () => {
+        expect(daysUntil(dayjs().add(1, 'hour'))).toBe(0);
+    });
+
+    it('floors a past date at 0 rather than counting backwards', () => {
+        // Callers render this as "in N days", so a negative number would read
+        // as a renewal in the past instead of one that is due.
+        expect(daysUntil(dayjs().subtract(2, 'day'))).toBe(0);
+    });
+
+    it('counts calendar days, not elapsed hours', () => {
+        // Late tonight to early tomorrow is one day away, not zero.
+        expect(daysUntil(dayjs().startOf('day').add(1, 'day'))).toBe(1);
+    });
+});
+
+describe('isLightColor', () => {
+    it('calls the light category washes light', () => {
+        // These are the persisted light-theme values; dark ink goes on them.
+        expect(isLightColor('#b8d4e3')).toBe(true);
+        expect(isLightColor('#e8def8')).toBe(true);
+        expect(isLightColor('#f5c542')).toBe(true);
+        expect(isLightColor('#d4d4d4')).toBe(true);
+    });
+
+    it('calls the dark category surfaces dark', () => {
+        expect(isLightColor('#6d2b2b')).toBe(false);
+        expect(isLightColor('#2a4453')).toBe(false);
+        expect(isLightColor('#38342f')).toBe(false);
+    });
+
+    it('handles the extremes', () => {
+        expect(isLightColor('#ffffff')).toBe(true);
+        expect(isLightColor('#000000')).toBe(false);
+    });
+
+    it('expands a three-digit hex', () => {
+        expect(isLightColor('#fff')).toBe(true);
+        expect(isLightColor('#000')).toBe(false);
+    });
+
+    it('accepts a hex without the leading hash', () => {
+        expect(isLightColor('ffffff')).toBe(true);
+    });
+
+    it('treats an unusable value as dark, which is the default ink case', () => {
+        expect(isLightColor(undefined)).toBe(false);
+        expect(isLightColor('')).toBe(false);
+        expect(isLightColor('rebeccapurple')).toBe(false);
+        expect(isLightColor('#ff')).toBe(false);
     });
 });
