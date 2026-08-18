@@ -294,20 +294,21 @@ const Subscriptions = () => {
                         {/* SubscriptionCard's own Pressable already toggles expand on
                             tap - this sits outside it as a distinct affordance to the
                             full detail screen, so neither gesture steals the other. */}
-                        <Pressable
-                            className="detail-link-row"
-                            onPress={() => router.push({ pathname: '/subscriptions/[id]', params: { id: item.id } })}
-                            accessibilityRole="button"
-                            accessibilityLabel={`View details for ${item.name}`}
-                            // No vertical padding on `.detail-link-row` - content is
-                            // only ~20pt tall, under the 44pt minimum. hitSlop instead
-                            // of adding padding, which would push the row away from
-                            // the card it's paired with.
-                            hitSlop={{ top: 12, bottom: 12 }}
-                        >
-                            <Text className="detail-link-text">Details</Text>
-                            <Feather name="chevron-right" size={16} color={colors.accent} />
-                        </Pressable>
+                        <View className="detail-link-row">
+                            <Pressable
+                                className="detail-link-button"
+                                onPress={() => router.push({ pathname: '/subscriptions/[id]', params: { id: item.id } })}
+                                accessibilityRole="button"
+                                accessibilityLabel={`View details for ${item.name}`}
+                                // The button's own padding gets it most of the way
+                                // to 44pt; hitSlop covers the rest without widening
+                                // the visible target again.
+                                hitSlop={{ top: 6, bottom: 6 }}
+                            >
+                                <Text className="detail-link-text">Details</Text>
+                                <Feather name="chevron-right" size={16} color={colors.accent} />
+                            </Pressable>
+                        </View>
                     </View>
                 )}
                 extraData={expandedId}

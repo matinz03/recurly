@@ -25,7 +25,7 @@ const UpcomingSubscriptionCard = ({ name, price, daysLeft, icon, currency }: Upc
             <View className="upcoming-row">
                 <SubscriptionIcon icon={icon} className="upcoming-icon" svgSize={32} />
                 <View className="min-w-0 flex-1">
-                    <Money value={price} currency={currency} className="upcoming-price" />
+                    <Money value={price} currency={currency} className="upcoming-price" numberOfLines={1} adjustsFontSizeToFit />
                     <Text className="upcoming-meta" numberOfLines={1}>
                         {renewalText}
                     </Text>

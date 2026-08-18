@@ -6,7 +6,7 @@ import images from '@/constants/images';
 import { useThemeColors } from '@/constants/theme';
 import { posthog } from '@/lib/posthog';
 import { notifyDestructive } from '@/lib/haptics';
-import { REMINDER_LEAD_DAY_OPTIONS, usePreferencesStore, type ReminderLeadDays } from '@/lib/preferencesStore';
+import { REMINDER_LEAD_DAY_OPTIONS, THEME_OPTIONS, usePreferencesStore, type ReminderLeadDays, type ThemePreference } from '@/lib/preferencesStore';
 import { CURRENCIES } from '@/constants/currencies';
 import { useSubscriptionStore } from '@/lib/subscriptionStore';
 import { useState } from 'react';
@@ -29,6 +29,8 @@ const Settings = () => {
     const clearSubscriptions = useSubscriptionStore((state) => state.clearSubscriptions);
     const baseCurrency = usePreferencesStore((state) => state.baseCurrency);
     const setBaseCurrency = usePreferencesStore((state) => state.setBaseCurrency);
+    const themePreference = usePreferencesStore((state) => state.themePreference);
+    const setThemePreference = usePreferencesStore((state) => state.setThemePreference);
 
     const handleSignOut = async () => {
         if (isSigningOut) return;
@@ -124,6 +126,29 @@ const Settings = () => {
                             {user?.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}
                         </Text>
                     </View>
+                </View>
+            </View>
+
+            <View className="auth-card mb-5">
+                <Text className="text-base font-sans-semibold text-primary mb-3">Appearance</Text>
+                <Text className="settings-row-helper mb-3">
+                    System follows your device setting.
+                </Text>
+                <View className="picker-row" accessibilityRole="radiogroup">
+                    {THEME_OPTIONS.map((option) => (
+                        <Pressable
+                            key={option}
+                            className={clsx('picker-option', themePreference === option && 'picker-option-active')}
+                            onPress={() => setThemePreference(option as ThemePreference)}
+                            accessibilityRole="radio"
+                            accessibilityLabel={option}
+                            accessibilityState={{ selected: themePreference === option }}
+                        >
+                            <Text className={clsx('picker-option-text', themePreference === option && 'picker-option-text-active')}>
+                                {option === 'system' ? 'System' : option === 'light' ? 'Light' : 'Dark'}
+                            </Text>
+                        </Pressable>
+                    ))}
                 </View>
             </View>
 

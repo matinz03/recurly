@@ -9,6 +9,13 @@ import {colors, useIsDarkTheme, useThemeColors} from "@/constants/theme";
 import {useCategoryColor} from "@/constants/categories";
 import { clsx } from "clsx";
 
+/**
+ * Shared by the height change and the body fade. They have to match: a shorter
+ * fade finished before the container did, so on collapse the rows vanished
+ * while the card was still shrinking.
+ */
+const EXPAND_MS = 220;
+
 const SubscriptionCard = ({ name, price, currency, icon, billing, color, category, plan, renewalDate, expanded, onPress, onEditPress, onCancelPress, onDeletePress, onPauseResumePress, paymentMethod, startDate, status}: SubscriptionCardProps) => {
     const themeColors = useThemeColors();
     const normalizedStatus = status?.toLowerCase();
@@ -51,7 +58,7 @@ const SubscriptionCard = ({ name, price, currency, icon, billing, color, categor
                 unreachable to a screen reader. Scoping it to just the head
                 also composes cleanly with `accessibilityState.expanded`,
                 which announces the toggle's current state. */}
-            <Animated.View layout={LinearTransition.duration(220).reduceMotion(ReduceMotion.System)}>
+            <Animated.View layout={LinearTransition.duration(EXPAND_MS).reduceMotion(ReduceMotion.System)}>
             <Pressable
                 onPress={onPress}
                 className="sub-head"
@@ -85,8 +92,8 @@ const SubscriptionCard = ({ name, price, currency, icon, billing, color, categor
             {expanded && (
                 <Animated.View
                     className="sub-body"
-                    entering={FadeIn.duration(180).reduceMotion(ReduceMotion.System)}
-                    exiting={FadeOut.duration(120).reduceMotion(ReduceMotion.System)}
+                    entering={FadeIn.duration(EXPAND_MS).reduceMotion(ReduceMotion.System)}
+                    exiting={FadeOut.duration(EXPAND_MS).reduceMotion(ReduceMotion.System)}
                 >
                     <View className="sub-details">
                         <View className="sub-row">

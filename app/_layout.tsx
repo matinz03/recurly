@@ -8,6 +8,7 @@ import { tokenCache } from "@clerk/expo/token-cache";
 import { PostHogProvider, usePostHog } from "posthog-react-native";
 import { posthog } from "@/lib/posthog";
 import { useRenewalReminders } from "@/lib/useRenewalReminders";
+import { useThemePreference } from "@/lib/useThemePreference";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -70,6 +71,7 @@ function RootLayoutContent() {
   const fontsReady = fontsLoaded || !!fontError;
 
   useRenewalReminders();
+  useThemePreference();
 
   useEffect(() => {
     if (fontsReady && authLoaded) {

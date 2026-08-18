@@ -607,8 +607,16 @@
         @apply text-accent;
     }
 
+    /* Wrapper only - it spans the card so the button can sit at the end. The
+       button below is what's actually pressable; when the Pressable itself was
+       full-width, a tap anywhere in this horizontal band opened the detail
+       screen. */
     .detail-link-row {
-        @apply mt-2 flex-row items-center justify-end gap-1 px-2;
+        @apply mt-2 items-end;
+    }
+
+    .detail-link-button {
+        @apply flex-row items-center gap-1 rounded-full px-3 py-2;
     }
 
     .detail-link-text {

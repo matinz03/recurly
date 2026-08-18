@@ -79,7 +79,20 @@ describe('persisted round trip', () => {
             remindersEnabled: false,
             reminderLeadDays: 3,
             baseCurrency: 'USD',
+            themePreference: 'system',
         });
+    });
+
+    // The light/system/dark choice has to outlive a relaunch, or the app snaps
+    // back to following the OS every cold start.
+    it('persists the chosen appearance', async () => {
+        const useStore = loadStore();
+        expect(useStore.getState().themePreference).toBe('system');
+
+        useStore.getState().setThemePreference('dark');
+        await flush();
+
+        expect((await readPersisted()).state.themePreference).toBe('dark');
     });
 
     // Amounts are entered in this currency rather than each subscription
