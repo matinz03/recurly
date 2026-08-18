@@ -45,6 +45,39 @@
     --font-sans-extrabold: sans-extrabold;
 }
 
+/*
+ * Dark palette - follows the OS `userInterfaceStyle: "automatic"` setting,
+ * no in-app toggle. NOT an inversion of the light tokens: see
+ * docs/DECISIONS.md ("Dark mode palette") for why `accent` in particular is
+ * darkened rather than just desaturated, and why `muted` stays lighter than
+ * a "surface" token normally would (two bundled glyph PNGs are fixed
+ * dark-navy and need a light-enough tile to stay visible).
+ *
+ * react-native-css (NativeWind v5's engine) compiles this the same way
+ * Tailwind v4 does by default: as a `@media (prefers-color-scheme: dark)`
+ * override of the `:root` custom properties, which is the mechanism it
+ * actually supports today - a class-based `.dark` ancestor selector is not
+ * (confirmed against node_modules/react-native-css's compiler, where that
+ * path is stubbed out/commented). Media-query variables and `dark:`
+ * utility variants both compile to the same underlying media-conditioned
+ * rule, so either is safe to use here.
+ */
+@media (prefers-color-scheme: dark) {
+    :root {
+        --color-background: #171310;
+        --color-foreground: #f3ecd7;
+        --color-card: #211b14;
+        --color-muted: #6e6151;
+        --color-muted-foreground: rgba(244, 237, 220, 0.72);
+        --color-primary: #f3ecd7;
+        --color-accent: #a84c2b;
+        --color-border: rgba(244, 237, 220, 0.14);
+        --color-success: #4ade80;
+        --color-destructive: #ef4444;
+        --color-subscription: #33564a;
+    }
+}
+
 @layer components {
     .tabs-icon {
         @apply size-12 items-center justify-center;
@@ -78,14 +111,13 @@
         @apply ml-4 text-2xl font-sans-bold text-primary;
     }
 
-    .home-add-icon {
-        @apply size-12;
-    }
-
     .home-balance-card {
         @apply my-2.5 min-h-50 justify-between gap-5 rounded-bl-4xl rounded-tr-4xl bg-accent p-6;
     }
 
+    /* Literal white, not the theme ink: this card is always the solid accent
+       fill (never inverted), and white-on-accent holds AA in both themes -
+       see docs/DECISIONS.md. */
     .home-balance-label {
         @apply text-xl font-sans-semibold text-white/80;
     }
@@ -102,6 +134,10 @@
         @apply text-xl font-sans-medium text-white;
     }
 
+    .home-balance-secondary {
+        @apply text-sm font-sans-medium text-white/70;
+    }
+
     .list-head {
         @apply my-5 flex-row items-center justify-between;
     }
@@ -111,7 +147,7 @@
     }
 
     .list-action {
-        @apply rounded-full border border-black/20 px-4 py-1;
+        @apply rounded-full border border-black/20 px-4 py-1 dark:border-white/20;
     }
 
     .list-action-text {
@@ -119,15 +155,19 @@
     }
 
     .upcoming-card {
-        @apply mr-4 w-44 rounded-2xl border border-black/10 bg-background p-4;
+        @apply mr-4 w-44 rounded-2xl border border-black/10 bg-background p-4 dark:border-white/10;
     }
 
     .upcoming-row {
         @apply flex-row items-center gap-3;
     }
 
+    /* dark:bg-muted, not bg-background: the fallback icon (icons.plus) is a
+       fixed dark-navy PNG that can't be recolored per-theme, and `muted` is
+       the surface that keeps it above the 3:1 non-text contrast floor
+       against it - see docs/DECISIONS.md. */
     .upcoming-icon {
-        @apply size-14;
+        @apply size-14 items-center justify-center rounded-lg bg-background dark:bg-muted;
     }
 
     .upcoming-price {
@@ -140,6 +180,14 @@
 
     .upcoming-name {
         @apply mt-2 text-lg font-sans-bold text-primary;
+    }
+
+    .search-bar {
+        @apply mb-5 flex-row items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3;
+    }
+
+    .search-input {
+        @apply flex-1 text-base font-sans-medium text-primary;
     }
 
     .sub-card {
@@ -158,8 +206,9 @@
         @apply min-w-0 flex-1 flex-row items-center gap-3;
     }
 
+    /* dark:bg-muted - see .upcoming-icon above; same fixed-PNG-fallback reason. */
     .sub-icon {
-        @apply size-16 rounded-lg;
+        @apply size-16 items-center justify-center rounded-lg bg-background dark:bg-muted;
     }
 
     .sub-copy {
@@ -223,7 +272,124 @@
     }
 
     .home-empty-state {
-        @apply py-4 text-sm font-sans-medium text-black/60;
+        @apply py-4 text-sm font-sans-medium text-black/60 dark:text-white/60;
+    }
+
+    .hydration-gate {
+        @apply items-center py-10;
+    }
+
+    /* Pinned top right, where the add control originally sat, rather than
+       scrolling away inside a list header. */
+    .add-button {
+        @apply absolute right-0 top-0 z-10 size-12 items-center justify-center rounded-full bg-muted;
+    }
+
+    .add-button-glyph {
+        @apply size-6;
+    }
+
+    .sub-actions {
+        @apply mt-2 flex-row gap-3;
+    }
+
+    .sub-action {
+        @apply flex-1 items-center rounded-full border border-primary/20 py-4;
+    }
+
+    .sub-action-text {
+        @apply font-sans-bold text-primary;
+    }
+
+    .sub-actions-secondary {
+        @apply mt-2 flex-row items-center gap-3;
+    }
+
+    /* Icon-only and outlined, deliberately smaller than .sub-cancel's filled
+       pill - Delete is the one irreversible action here and should not read
+       as more prominent than Cancel. */
+    .sub-delete {
+        @apply size-12 items-center justify-center rounded-full border border-destructive/30;
+    }
+
+    .insights-scroll {
+        @apply flex-1;
+    }
+
+    .insights-content {
+        @apply gap-6 pb-30;
+    }
+
+    .insights-summary-row {
+        @apply flex-row gap-4;
+    }
+
+    .insights-stat {
+        @apply flex-1 gap-1 rounded-2xl border border-border bg-card p-4;
+    }
+
+    .insights-stat-label {
+        @apply text-xs font-sans-semibold uppercase tracking-[1px] text-muted-foreground;
+    }
+
+    .insights-stat-value {
+        @apply text-2xl font-sans-extrabold text-primary;
+    }
+
+    .insights-stat-meta {
+        @apply text-xs font-sans-medium text-muted-foreground;
+    }
+
+    .insights-card {
+        @apply gap-4 rounded-2xl border border-border bg-card p-4;
+    }
+
+    .insights-card-title {
+        @apply text-lg font-sans-bold text-primary;
+    }
+
+    .insights-row {
+        @apply gap-2;
+    }
+
+    .insights-row-head {
+        @apply flex-row items-baseline justify-between gap-3;
+    }
+
+    .insights-row-label {
+        @apply shrink text-base font-sans-semibold text-primary;
+    }
+
+    .insights-row-value {
+        @apply shrink-0 text-base font-sans-bold text-primary;
+    }
+
+    .insights-track {
+        @apply h-2 overflow-hidden rounded-full bg-muted;
+    }
+
+    .insights-fill {
+        @apply h-full rounded-full bg-accent;
+    }
+
+    .insights-status-row {
+        @apply flex-row justify-between;
+    }
+
+    .insights-status {
+        @apply items-center gap-1;
+    }
+
+    .insights-status-value {
+        @apply text-xl font-sans-extrabold text-primary;
+    }
+
+    .insights-status-label {
+        @apply text-xs font-sans-semibold text-muted-foreground;
+    }
+
+    .insights-note {
+        @apply text-xs font-sans-medium text-muted-foreground;
     }
 
     .auth-safe-area {
@@ -351,11 +517,23 @@
     }
 
     .modal-overlay {
-        @apply flex-1 bg-black/50;
+        @apply flex-1;
     }
 
+    /* max-h (not h) so the sheet hugs short content, and a percentage so it
+       resolves against the keyboard-shrunk overlay rather than the whole
+       screen. The ScrollView inside must NOT be flex-1: that zeroes its
+       flex-basis, so the sheet would collapse to just the header. */
     .modal-container {
         @apply mt-auto max-h-[85%] rounded-t-3xl bg-background;
+    }
+
+    .modal-handle-row {
+        @apply items-center pb-1 pt-3;
+    }
+
+    .modal-handle {
+        @apply h-1.5 w-12 rounded-full border-2 border-accent bg-background;
     }
 
     .modal-header {
@@ -416,5 +594,168 @@
 
     .category-chip-text-active {
         @apply text-accent;
+    }
+
+    .detail-link-row {
+        @apply mt-2 flex-row items-center justify-end gap-1 px-2;
+    }
+
+    .detail-link-text {
+        @apply text-sm font-sans-semibold text-accent;
+    }
+
+    .detail-header {
+        @apply flex-row items-center gap-3 px-5 pb-4 pt-2;
+    }
+
+    .detail-back {
+        @apply size-10 items-center justify-center rounded-full bg-muted;
+    }
+
+    .detail-back-icon {
+        @apply size-5;
+    }
+
+    .detail-header-title {
+        @apply flex-1 text-center text-lg font-sans-bold text-primary;
+    }
+
+    .detail-header-spacer {
+        @apply size-10;
+    }
+
+    .detail-missing {
+        @apply flex-1 items-center justify-center gap-4 p-6;
+    }
+
+    .detail-missing-text {
+        @apply text-center text-base font-sans-medium text-muted-foreground;
+    }
+
+    .detail-missing-button {
+        @apply items-center rounded-full bg-accent px-6 py-3;
+    }
+
+    .detail-missing-button-text {
+        @apply text-base font-sans-bold text-primary;
+    }
+
+    .detail-content {
+        @apply gap-6 p-5 pb-30;
+    }
+
+    .detail-hero {
+        @apply items-center gap-3 rounded-3xl border border-border bg-card p-6;
+    }
+
+    /* dark:bg-muted - see .upcoming-icon above; same fixed-PNG-fallback reason. */
+    .detail-hero-icon {
+        @apply mb-1 size-20 items-center justify-center rounded-2xl bg-background dark:bg-muted;
+    }
+
+    .detail-name {
+        @apply text-center text-2xl font-sans-bold text-primary;
+    }
+
+    .detail-price-row {
+        @apply flex-row items-baseline gap-2;
+    }
+
+    .detail-price {
+        @apply text-3xl font-sans-extrabold text-primary;
+    }
+
+    .detail-billing {
+        @apply text-base font-sans-medium text-muted-foreground;
+    }
+
+    .detail-status-badge {
+        @apply mt-2 rounded-full bg-background px-4 py-1.5;
+    }
+
+    .detail-status-text {
+        @apply text-sm font-sans-bold text-primary;
+    }
+
+    .detail-renewal-card {
+        @apply gap-1 rounded-2xl border border-border bg-card p-4;
+    }
+
+    .detail-renewal-label {
+        @apply text-sm font-sans-semibold text-muted-foreground;
+    }
+
+    .detail-renewal-date {
+        @apply text-xl font-sans-bold text-primary;
+    }
+
+    .detail-renewal-days {
+        @apply text-sm font-sans-semibold text-accent;
+    }
+
+    .empty-subs {
+        @apply items-center gap-2 px-6 py-10;
+    }
+
+    .empty-subs-icon-wrap {
+        @apply mb-2 size-16 items-center justify-center rounded-full bg-muted;
+    }
+
+    .empty-subs-icon {
+        @apply size-8;
+    }
+
+    .empty-subs-title {
+        @apply text-lg font-sans-bold text-primary;
+    }
+
+    .empty-subs-copy {
+        @apply max-w-[280px] text-center text-sm font-sans-medium text-muted-foreground;
+    }
+
+    .empty-subs-button {
+        @apply mt-3 flex-row items-center gap-2 rounded-full bg-accent px-5 py-3;
+    }
+
+    .empty-subs-button-text {
+        @apply text-sm font-sans-bold text-primary;
+    }
+
+    /* Softer than .auth-error (destructive red) - a possible duplicate is a
+       warning to double-check, not a validation failure blocking submit. */
+    .auth-warning {
+        @apply text-xs font-sans-medium text-accent;
+    }
+
+    .settings-row {
+        @apply flex-row items-center justify-between gap-3 py-2;
+    }
+
+    .settings-row-copy {
+        @apply flex-1 gap-1 pr-3;
+    }
+
+    .settings-row-label {
+        @apply text-sm font-sans-semibold text-primary;
+    }
+
+    .settings-row-helper {
+        @apply text-xs font-sans-medium text-muted-foreground;
+    }
+
+    .settings-divider {
+        @apply my-3 h-px bg-border;
+    }
+
+    /* Outlined rather than filled, same reasoning .sub-delete gives for its
+       destructive-but-secondary styling - this sits in the same card as
+       ordinary rows and shouldn't read as more urgent than a modal
+       confirmation would already make it. */
+    .settings-danger-button {
+        @apply mt-1 items-center rounded-2xl border border-destructive/40 bg-destructive/10 py-4;
+    }
+
+    .settings-danger-button-text {
+        @apply text-base font-sans-bold text-destructive;
     }
 }

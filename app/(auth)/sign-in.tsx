@@ -1,12 +1,14 @@
-import { View, Text, TextInput, Pressable, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, TextInput, Pressable, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { Link, useRouter, type Href } from 'expo-router';
 import { useSignIn, useSSO } from '@clerk/expo';
 import { useState } from 'react';
 import { SafeAreaView as RNSafeAreaView } from 'react-native-safe-area-context';
 import { styled } from 'nativewind';
+import * as Linking from 'expo-linking';
 import { AntDesign } from '@expo/vector-icons';
-import { colors } from '@/constants/theme';
-import clsx from 'clsx';
+import { useThemeColors } from '@/constants/theme';
+import { posthog } from '@/lib/posthog';
+import { clsx } from 'clsx';
 
 const SafeAreaView = styled(RNSafeAreaView);
 
@@ -17,6 +19,7 @@ const SSO_PROVIDERS = [
 ] as const;
 
 const SignIn = () => {
+    const colors = useThemeColors();
     const { signIn, errors, fetchStatus } = useSignIn();
     const { startSSOFlow } = useSSO();
     const router = useRouter();
@@ -41,15 +44,14 @@ const SignIn = () => {
 
         setFormError(null);
 
+        // Clerk surfaces failures through errors.fields / errors.global, which the
+        // form renders - don't echo error.message here or it shows up twice.
         const { error } = await signIn.password({
             emailAddress,
             password,
         });
 
-        if (error) {
-            setFormError(error.message ?? 'Could not sign you in. Please try again.');
-            return;
-        }
+        if (error) return;
 
         if (signIn.status === 'complete') {
             await signIn.finalize({
@@ -61,12 +63,14 @@ const SignIn = () => {
 
                     const url = decorateUrl('/(tabs)');
                     if (url.startsWith('http')) {
-                        window.location.href = url;
+                        // React Native has no window.location - assigning to it throws.
+                        Linking.openURL(url).catch(() => {});
                     } else {
                         router.replace(url as Href);
                     }
                 },
             });
+            posthog?.capture('sign_in_completed', { method: 'password' });
         } else if (signIn.status === 'needs_second_factor') {
             // MFA isn't implemented in this flow, so say so rather than stalling.
             setFormError('This account requires two-factor authentication, which is not supported yet.');
@@ -82,11 +86,7 @@ const SignIn = () => {
                 return;
             }
 
-            const { error: sendError } = await signIn.mfa.sendEmailCode();
-
-            if (sendError) {
-                setFormError(sendError.message ?? 'Could not send the verification code.');
-            }
+            await signIn.mfa.sendEmailCode();
         } else {
             setFormError('Could not complete sign-in. Please try again.');
         }
@@ -102,6 +102,7 @@ const SignIn = () => {
 
             if (createdSessionId && setActive) {
                 await setActive({ session: createdSessionId });
+                posthog?.capture('sign_in_completed', { method: 'sso' });
             } else if (authSessionResult?.type !== 'cancel' && authSessionResult?.type !== 'dismiss') {
                 // A first-time SSO user is transferred into signUp.create({ transfer: true }).
                 // That can't complete if the instance requires fields the provider doesn't
@@ -127,10 +128,7 @@ const SignIn = () => {
 
         const { error } = await signIn.mfa.verifyEmailCode({ code });
 
-        if (error) {
-            setFormError(error.message ?? 'That code was not accepted. Please try again.');
-            return;
-        }
+        if (error) return;
 
         if (signIn.status === 'complete') {
             await signIn.finalize({
@@ -142,12 +140,14 @@ const SignIn = () => {
 
                     const url = decorateUrl('/(tabs)');
                     if (url.startsWith('http')) {
-                        window.location.href = url;
+                        // React Native has no window.location - assigning to it throws.
+                        Linking.openURL(url).catch(() => {});
                     } else {
                         router.replace(url as Href);
                     }
                 },
             });
+            posthog?.capture('sign_in_completed', { method: 'email_code' });
         } else {
             setFormError('Could not complete sign-in. Please try again.');
         }
@@ -155,10 +155,7 @@ const SignIn = () => {
 
     const handleResend = async () => {
         setFormError(null);
-        const { error } = await signIn.mfa.sendEmailCode();
-        if (error) {
-            setFormError(error.message ?? 'Could not resend the verification code.');
-        }
+        await signIn.mfa.sendEmailCode();
     };
 
     // Show verification screen if client trust is needed
@@ -201,7 +198,7 @@ const SignIn = () => {
                                             className="auth-input"
                                             value={code}
                                             placeholder="Enter 6-digit code"
-                                            placeholderTextColor="rgba(0, 0, 0, 0.4)"
+                                            placeholderTextColor={colors.placeholder}
                                             onChangeText={setCode}
                                             keyboardType="number-pad"
                                             autoComplete="one-time-code"
@@ -291,7 +288,7 @@ const SignIn = () => {
                                         autoCapitalize="none"
                                         value={emailAddress}
                                         placeholder="name@example.com"
-                                        placeholderTextColor="rgba(0, 0, 0, 0.4)"
+                                        placeholderTextColor={colors.placeholder}
                                         onChangeText={setEmailAddress}
                                         onBlur={() => setEmailTouched(true)}
                                         keyboardType="email-address"
@@ -311,7 +308,7 @@ const SignIn = () => {
                                         className={clsx('auth-input', passwordTouched && !passwordValid && 'auth-input-error')}
                                         value={password}
                                         placeholder="Enter your password"
-                                        placeholderTextColor="rgba(0, 0, 0, 0.4)"
+                                        placeholderTextColor={colors.placeholder}
                                         secureTextEntry
                                         onChangeText={setPassword}
                                         onBlur={() => setPasswordTouched(true)}
@@ -351,12 +348,20 @@ const SignIn = () => {
                                     {SSO_PROVIDERS.map(({ strategy, icon, label }) => (
                                         <Pressable
                                             key={strategy}
-                                            className="flex-1 items-center justify-center rounded-2xl border border-border bg-background py-4"
+                                            className={clsx(
+                                                'flex-1 items-center justify-center rounded-2xl border border-border bg-background py-4',
+                                                ssoStrategy !== null && ssoStrategy !== strategy && 'opacity-40'
+                                            )}
                                             onPress={() => handleSSO(strategy)}
                                             disabled={ssoStrategy !== null}
                                             accessibilityLabel={`Continue with ${label}`}
+                                            accessibilityState={{ disabled: ssoStrategy !== null, busy: ssoStrategy === strategy }}
                                         >
-                                            <AntDesign name={icon} size={22} color={colors.primary} />
+                                            {ssoStrategy === strategy ? (
+                                                <ActivityIndicator color={colors.primary} />
+                                            ) : (
+                                                <AntDesign name={icon} size={22} color={colors.primary} />
+                                            )}
                                         </Pressable>
                                     ))}
                                 </View>
@@ -367,7 +372,10 @@ const SignIn = () => {
                         <View className="auth-link-row">
                             <Text className="auth-link-copy">Don&apos;t have an account?</Text>
                             <Link href="/(auth)/sign-up" asChild>
-                                <Pressable>
+                                {/* `.auth-link` is just the text's own line height (~20pt) with
+                                    no padding - under the 44pt minimum. hitSlop instead of
+                                    padding, which would misalign it from the copy beside it. */}
+                                <Pressable hitSlop={{ top: 12, bottom: 12 }}>
                                     <Text className="auth-link">Create Account</Text>
                                 </Pressable>
                             </Link>
