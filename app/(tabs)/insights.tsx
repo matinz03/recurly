@@ -58,14 +58,16 @@ const Insights = () => {
             .sort((a, b) => b.amount - a.amount)
             .slice(0, TOP_LIMIT);
 
-        // Scoped to the dominant currency like every other figure here.
-        // Counting all currencies made the Status card disagree with the
-        // "N active plans" tile above it, with nothing explaining why.
+        // Deliberately counts every subscription, not just the dominant
+        // currency's. Counts aren't money, so there's nothing to mix - and
+        // scoping them hid records entirely: `currency` is derived from active
+        // subscriptions only, so an account whose plans are all cancelled in
+        // EUR fell back to USD and reported zero of everything. The card is
+        // labelled as covering all currencies so it can't be read as
+        // contradicting the scoped totals above.
         const counts = STATUSES.map((status) => ({
             status,
-            count: subscriptions.filter(
-                (s) => s.status?.toLowerCase() === status && (s.currency ?? 'USD') === currency
-            ).length,
+            count: subscriptions.filter((s) => s.status?.toLowerCase() === status).length,
         }));
 
         return {
@@ -187,6 +189,7 @@ const Insights = () => {
 
                 <View className="insights-card">
                     <Text className="insights-card-title">Status</Text>
+                    <Text className="insights-stat-meta">Across all currencies</Text>
                     <View className="insights-status-row">
                         {insights.counts.map(({ status, count }) => (
                             <View key={status} className="insights-status">

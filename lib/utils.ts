@@ -24,6 +24,9 @@ export const formatStatusLabel = (value?: string): string => {
   return value.charAt(0).toUpperCase() + value.slice(1);
 };
 
+/** ~50 years of monthly periods; beyond this the stored date is wrong, not old. */
+const MAX_ROLL_FORWARD_PERIODS = 600;
+
 const billingUnit = (billing?: string): "month" | "year" =>
   billing?.toLowerCase() === "yearly" ? "year" : "month";
 
@@ -47,10 +50,16 @@ export const nextRenewalDate = (
   const now = dayjs();
   let next = parsed;
   // Bounded so a far-past date (or a clock skew) can't spin forever.
-  for (let i = 0; i < 600 && next.isBefore(now); i += 1) {
+  for (let i = 0; i < MAX_ROLL_FORWARD_PERIODS && next.isBefore(now); i += 1) {
     next = next.add(1, unit);
   }
-  return next;
+
+  // Hitting the bound means the date is implausibly old - a bad import, or a
+  // mistyped year. Returning it anyway would hand callers a past date they
+  // treat as future: daysUntil floors to 0 so the UI says "renews today", and
+  // reminder scheduling silently produces nothing. null is the signal callers
+  // already handle.
+  return next.isBefore(now) ? null : next;
 };
 
 /** Whole days from now until `date`, floored at 0. */

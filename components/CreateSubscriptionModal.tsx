@@ -177,7 +177,10 @@ const CreateSubscriptionModal = ({ visible, onClose, onSubmit, subscription, exi
             isEditing &&
             subscription.billing === frequency &&
             !!subscription.startDate &&
-            dayjs(subscription.startDate).isSame(startDate) &&
+            // By day, not by millisecond: only a calendar day is selectable,
+            // and reselecting the same day carries a different time-of-day,
+            // which would defeat the very guard this is.
+            dayjs(subscription.startDate).isSame(startDate, 'day') &&
             !!subscription.renewalDate;
 
         const firstRenewal = startDate.add(1, frequency === 'Monthly' ? 'month' : 'year');
