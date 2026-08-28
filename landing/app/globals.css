@@ -1,0 +1,333 @@
+@import 'tailwindcss';
+
+/*
+ * Tokens are copied from the Expo app's `../global.css` @theme block, which
+ * stays the source of truth - this file must not drift from it. The web-only
+ * additions below (--color-brand-*, --color-cat-*) are the splash-pattern and
+ * category palettes lifted out of the app's assets and constants.
+ */
+@theme {
+    --color-background: #fff9e3;
+    --color-foreground: #081126;
+    --color-card: #fff8e7;
+    --color-muted: #f6eecf;
+    --color-muted-foreground: rgba(0, 0, 0, 0.6);
+    --color-primary: #081126;
+    --color-accent: #ea7a53;
+    --color-border: rgba(0, 0, 0, 0.1);
+    /* A real token per theme rather than an opacity modifier: Tailwind compiles
+       `border-foreground/25` to color-mix(in oklab, ...), which renders nothing
+       in light mode. Same reason as the app - see ../AGENTS.md. */
+    --color-border-strong: rgba(8, 17, 38, 0.28);
+    --color-success: #16a34a;
+    --color-destructive: #dc2626;
+    --color-subscription: #8fd1bd;
+    /* Brand marks are drawn for light grounds, so their tile stays light in
+       both themes instead of inverting out from under them. */
+    --color-icon-tile: #fff9e3;
+
+    /* Fixed chrome. The tab bar's glyphs are baked-white PNGs with no runtime
+       tint, so the bar is the same dark navy in both themes. */
+    --color-nav-chrome: #081126;
+
+    /* The splash pattern's palette (assets/images/splash-pattern.png). */
+    --color-brand-coral: #ea7a53;
+    --color-brand-amber: #f2c078;
+    --color-brand-mint: #8fd1bd;
+    --color-brand-navy: #3f4360;
+    --color-brand-cream: #f2eede;
+
+    /* The app's category washes (constants/categories.ts), used to key the
+       feature cards so they read in the same colours the app does. */
+    --color-cat-entertainment: #ff6b6b;
+    --color-cat-ai: #b8d4e3;
+    --color-cat-dev: #e8def8;
+    --color-cat-design: #f5c542;
+    --color-cat-productivity: #95e1d3;
+
+    --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+}
+
+/*
+ * Not an inversion of the light tokens. Copied from the app's dark palette:
+ * surfaces are warm near-black rather than pure black, and `accent` is
+ * darkened (not just desaturated) because it is used as a fill behind light
+ * ink and has to stay dark enough for that text to hold AA.
+ */
+@media (prefers-color-scheme: dark) {
+    :root {
+        --color-background: #171310;
+        --color-foreground: #f3ecd7;
+        --color-card: #211b14;
+        --color-muted: #6e6151;
+        --color-muted-foreground: rgba(244, 237, 220, 0.72);
+        --color-primary: #f3ecd7;
+        --color-accent: #a84c2b;
+        --color-border: rgba(244, 237, 220, 0.14);
+        --color-border-strong: rgba(243, 236, 215, 0.24);
+        --color-success: #4ade80;
+        --color-destructive: #ef4444;
+        --color-subscription: #33564a;
+        --color-icon-tile: #e7ddc6;
+        --color-brand-cream: #2b2419;
+    }
+}
+
+/*
+ * The brand's signature shape: two opposite corners rounded, two square. It
+ * comes from the logo mark and the app's balance card
+ * (`rounded-bl-4xl rounded-tr-4xl`), and every panel here reuses it so the page
+ * and the product read as the same object.
+ *
+ * Declared with @utility, not as classes in `@layer components`: Tailwind v4
+ * only lets @apply reference real utilities, so a plain component class here
+ * could not be composed into the panels below.
+ */
+@utility corner-xl {
+    border-top-right-radius: 2.5rem;
+    border-bottom-left-radius: 2.5rem;
+}
+
+@utility corner-lg {
+    border-top-right-radius: 2rem;
+    border-bottom-left-radius: 2rem;
+}
+
+@utility corner-md {
+    border-top-right-radius: 1rem;
+    border-bottom-left-radius: 1rem;
+}
+
+@utility corner-sm {
+    border-top-right-radius: 0.75rem;
+    border-bottom-left-radius: 0.75rem;
+}
+
+/* Softens the bottom edge of the phone mockup so the screen runs out of view
+   instead of ending on a hard crop. */
+@utility fade-bottom {
+    mask-image: linear-gradient(to bottom, #000 76%, transparent 100%);
+}
+
+/* Same idea for the Upcoming carousel: the real one scrolls, and a hard edge
+   would read as a truncated card rather than more to come. */
+@utility fade-right {
+    mask-image: linear-gradient(to right, #000 76%, transparent 100%);
+}
+
+@layer base {
+    html {
+        scroll-behavior: smooth;
+        /* The nav is sticky; without this an anchor jump parks the target
+           heading underneath it. */
+        scroll-padding-top: 6rem;
+    }
+
+    body {
+        @apply bg-background text-foreground antialiased;
+        font-family: var(--font-sans);
+    }
+
+    ::selection {
+        @apply bg-accent text-white;
+    }
+
+    :focus-visible {
+        @apply outline-2 outline-offset-2 outline-accent;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        html {
+            scroll-behavior: auto;
+        }
+
+        *,
+        *::before,
+        *::after {
+            animation-duration: 0.01ms !important;
+            transition-duration: 0.01ms !important;
+        }
+    }
+}
+
+@layer components {
+    .shell {
+        @apply mx-auto w-full max-w-6xl px-6 lg:px-8;
+    }
+
+    .eyebrow {
+        @apply text-xs font-semibold uppercase tracking-[1.5px] text-muted-foreground;
+    }
+
+    .lede {
+        @apply text-lg leading-relaxed text-muted-foreground sm:text-xl;
+    }
+
+    /* Pill buttons, matching the app's `.sub-cancel` / `.list-action` pair: one
+       solid fill for the primary action, one hairline outline for the rest.
+       Utility classes at the call site win over these (the utilities layer
+       comes last), so a smaller variant is just `px-5 py-2.5 text-sm`. */
+    .btn-primary {
+        @apply inline-flex select-none items-center justify-center gap-2.5 rounded-full
+               bg-accent px-7 py-4 text-base font-bold text-white
+               transition duration-150 ease-out
+               hover:-translate-y-0.5 hover:brightness-105 active:translate-y-0;
+        box-shadow: 0 12px 28px -14px color-mix(in srgb, var(--color-accent) 80%, transparent);
+    }
+
+    .btn-outline {
+        @apply inline-flex select-none items-center justify-center gap-2.5 rounded-full
+               border border-border-strong px-7 py-4 text-base font-bold text-primary
+               transition duration-150 ease-out
+               hover:-translate-y-0.5 hover:bg-muted active:translate-y-0;
+    }
+
+    /* Small status pill - the version chip, the "Alpha" marker, the fact strip. */
+    .chip {
+        @apply inline-flex items-center gap-2 rounded-full border border-border-strong
+               px-3.5 py-1.5 text-xs font-semibold text-muted-foreground;
+    }
+
+    .panel {
+        @apply corner-lg border border-border-strong bg-card;
+    }
+
+    .feature-card {
+        @apply corner-md flex h-full flex-col gap-4 border border-border-strong bg-card p-7;
+    }
+
+    /* The wash square each feature card is keyed to. Colour arrives as an
+       inline style so a card can carry a category value straight through. */
+    .feature-swatch {
+        @apply corner-sm flex size-11 shrink-0 items-center justify-center;
+    }
+
+    .feature-title {
+        @apply text-xl font-bold text-primary;
+    }
+
+    .feature-body {
+        @apply text-[0.9375rem] leading-relaxed text-muted-foreground;
+    }
+
+    /* --- The Insights screen's stat tiles and bar rows. --- */
+    .insights-stat {
+        @apply corner-md flex-1 border border-border bg-card p-5;
+    }
+
+    .insights-stat-label {
+        @apply text-xs font-semibold uppercase tracking-[1px] text-muted-foreground;
+    }
+
+    .insights-stat-value {
+        @apply text-3xl font-extrabold tracking-tight text-primary;
+    }
+
+    .insights-track {
+        @apply h-2 overflow-hidden rounded-full bg-muted;
+    }
+
+    .insights-fill {
+        @apply h-full rounded-full bg-accent;
+    }
+
+    /* --- Phone mockup: the app's own component classes, at the app's sizes. --- */
+    .balance-card {
+        @apply corner-lg flex min-h-[200px] flex-col justify-between gap-5 bg-accent p-6;
+    }
+
+    /* Literal white, not the theme ink: this card is always the solid accent
+       fill and never inverts, and white on accent holds AA in both themes. */
+    .balance-label {
+        @apply text-xl font-semibold text-white/80;
+    }
+
+    .balance-amount {
+        @apply text-4xl font-extrabold tracking-tight text-white;
+    }
+
+    .list-head {
+        @apply my-5 flex items-center justify-between;
+    }
+
+    .list-title {
+        @apply text-2xl font-bold text-primary;
+    }
+
+    .list-action {
+        @apply rounded-full border border-border-strong px-4 py-1 text-lg font-semibold text-primary;
+    }
+
+    .upcoming-card {
+        @apply corner-md w-44 shrink-0 border border-border-strong bg-background p-4;
+    }
+
+    .upcoming-icon {
+        @apply size-14 shrink-0 overflow-hidden rounded-lg bg-icon-tile;
+    }
+
+    .upcoming-price {
+        @apply text-lg font-bold text-primary;
+    }
+
+    .upcoming-meta {
+        @apply truncate text-sm font-semibold text-muted-foreground;
+    }
+
+    .upcoming-name {
+        @apply mt-2 truncate text-lg font-bold text-primary;
+    }
+
+    /* Collapsed list cards carry their category wash as a background, so the
+       ink on them is the fixed light-theme navy rather than the theme's, which
+       would go light in dark mode and vanish on a pale card. */
+    .sub-card {
+        @apply corner-md flex items-center gap-3 border border-border p-4;
+    }
+
+    .sub-icon {
+        @apply size-16 shrink-0 overflow-hidden rounded-lg bg-icon-tile;
+    }
+
+    .sub-title {
+        @apply mb-1 truncate text-lg font-bold;
+    }
+
+    .sub-meta {
+        @apply truncate text-sm font-semibold;
+    }
+
+    .sub-price {
+        @apply mb-1 text-lg font-bold;
+    }
+
+    .sub-billing {
+        @apply text-sm font-medium;
+    }
+
+    /* --- Disclosures (FAQ, the build's known limitations). --- */
+    .disclosure {
+        @apply corner-md border border-border-strong bg-card px-6;
+    }
+
+    .disclosure > summary {
+        @apply flex cursor-pointer list-none items-center justify-between gap-4 py-5
+               text-base font-bold text-primary;
+    }
+
+    .disclosure > summary::-webkit-details-marker {
+        display: none;
+    }
+
+    .disclosure .chev {
+        @apply shrink-0 text-muted-foreground transition-transform duration-200;
+    }
+
+    .disclosure[open] > summary .chev {
+        rotate: 180deg;
+    }
+
+    .disclosure-body {
+        @apply pb-6 text-[0.9375rem] leading-relaxed text-muted-foreground;
+    }
+}

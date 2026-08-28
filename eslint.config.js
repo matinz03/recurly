@@ -5,6 +5,8 @@ const expoConfig = require('eslint-config-expo/flat');
 module.exports = defineConfig([
   expoConfig,
   {
-    ignores: ['dist/*'],
+    // `landing/` is a self-contained Next.js project with its own toolchain -
+    // linting it against the Expo config reports on rules it never opted into.
+    ignores: ['dist/*', 'landing/*'],
   },
 ]);
